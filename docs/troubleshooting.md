@@ -18,7 +18,7 @@ layer 4, so never start with Sunshine.
 | Ping fails | 2 — addressing | `ip neigh show dev usb0` |
 | Ping works, Moonlight cannot find host | 2/4 — firewall or listening address | `ss -lntup` |
 | Moonlight connects, black screen | 3 — virtual output | `hyprctl monitors` |
-| Sunshine logs `Selected monitor []` | 3 — output missing | `hyprctl monitors`, supervisor state |
+| Sunshine's monitor list has no `IPAD` | 3 — output missing | `hyprctl monitors`, supervisor state |
 | iPad shows a clone of the laptop | 4 — capture backend | `capture` must be `wlr`, not `kms` |
 | Image appears but is blurry | 3 — resolution | output mode vs client request |
 | Keyboard stops responding after connecting | 3 — focus side effect | active window moved to `IPAD` |
@@ -162,12 +162,17 @@ hyprctl workspaces -j
 
 A disabled output is still listed by `monitors all` but is not rendered.
 
-### Sunshine logs `Selected monitor []`
+### Sunshine's monitor list does not contain `IPAD`
 
-The empty brackets mean Sunshine found no output matching `output_name` and has
-no valid capture target. The stream connects but shows nothing.
+At stream start Sunshine prints the outputs it can see:
 
-Check, in this order:
+```text
+[wlgrab] Monitor 0 is eDP-1: AUO 0x1234  (eDP-1)
+[wlgrab] Monitor 1 is IPAD:
+```
+
+If `IPAD` is missing from that list, nothing will be captured. Check whether the
+output exists and whether the supervisor is running:
 
 ```bash
 hyprctl monitors                          # does IPAD exist and is it enabled?
@@ -175,8 +180,26 @@ grep -E 'output_name|capture' ~/.config/sunshine/sunshine.conf
 systemctl --user status ivm-watch         # is the supervisor running?
 ```
 
-If the output is missing and the supervisor is not running, nothing will create
-it. This is the most common cause of "it worked yesterday".
+### Do not diagnose with `Selected monitor []`
+
+Sunshine prints this line even when the stream works correctly:
+
+```text
+[wlgrab] Selected monitor [] for streaming
+```
+
+It appears on successful sessions too. It is noise from the capture backend, not
+a status. Use the monitor list and the actual image instead.
+
+### Overlapping virtual monitors
+
+A leftover virtual output (for example a `vkms` connector) can be enabled at the
+same position as `IPAD`. Two monitors overlapping in the layout cause windows to
+land on an invisible area. Check for duplicates:
+
+```bash
+hyprctl monitors all -j | jq '.[] | "\(.name) x=\(.x) y=\(.y) disabled=\(.disabled)"'
+```
 
 ### The keyboard stops responding after connecting
 

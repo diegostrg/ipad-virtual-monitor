@@ -266,7 +266,7 @@ not edit your configuration.
 1. `ip -4 addr show dev usb0` shows `10.42.0.1/24`.
 2. `ping` to the iPad succeeds.
 3. `hyprctl monitors` lists `IPAD` while streaming.
-4. Sunshine logs `Monitor N is IPAD` and `Selected monitor ... IPAD`.
+4. Sunshine's monitor list includes `Monitor N is IPAD`.
 5. Moonlight connects to `10.42.0.1`, not to the iPad's address.
 6. The iPad shows a desktop area, not a copy of the laptop screen.
 7. The keyboard still works on the laptop after the output is created.
@@ -275,7 +275,9 @@ not edit your configuration.
 ## Known traps
 
 - **Black screen, healthy network.** The configured output does not exist.
-  Check `hyprctl monitors`. Sunshine logs `Selected monitor []` in this case.
+  Check `hyprctl monitors` and the monitor list in Sunshine's log. Note that
+  `Selected monitor []` is printed even on successful streams and is not a
+  diagnostic signal.
 - **iPad shows a clone of the laptop.** `capture = kms` cannot see headless
   outputs. Switch to `wlr`.
 - **Keyboard stops responding after connecting.** The active window moved to
