@@ -178,13 +178,19 @@ _doctor_network() {
             ivm_ok 'no firewall service is active'
             ;;
         ufw)
-            if net_ufw_allows_dhcp "$iface"; then
-                ivm_ok "ufw allows DHCP in on $iface"
-            else
-                ivm_warn "ufw has no DHCP rule for $iface"
-                ivm_detail 'the iPad will not get an address while that request is dropped'
-                ivm_detail 'add it with: ivm net up'
-            fi
+            case $(net_ufw_dhcp_rule "$iface") in
+                broad) ivm_ok "ufw allows DHCP in on $iface" ;;
+                narrow)
+                    ivm_warn "ufw only allows DHCP to a fixed address on $iface"
+                    ivm_detail 'a new lease request is broadcast, so it is dropped'
+                    ivm_detail 'add the interface-wide rule with: ivm net up'
+                    ;;
+                *)
+                    ivm_warn "ufw has no DHCP rule for $iface"
+                    ivm_detail 'the iPad will not get an address while that request is dropped'
+                    ivm_detail 'add it with: ivm net up'
+                    ;;
+            esac
             ;;
         *)
             ivm_warn "$(net_firewall_name) is active; its rules cannot be read without root"

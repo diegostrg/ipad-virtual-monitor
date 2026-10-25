@@ -193,17 +193,42 @@ net_unmanaged_value() {
 
 IVM_UFW_USER_RULES=${IVM_UFW_USER_RULES:-/etc/ufw/user.rules}
 
-# True when the saved UFW ruleset allows DHCP on the interface.
+# The DHCP rule UFW has for an interface: `broad`, `narrow` or nothing.
 #
 # The live ruleset needs root to read; the saved one does not, and a rule that
 # exists in the file but was never reloaded is a different problem that `ivm net
-# up` answers with `ufw reload`.
-net_ufw_allows_dhcp() {
+# up` answers by reloading.
+#
+# The distinction between the two kinds matters more than it looks. A DHCP client
+# with no lease sends its request to 255.255.255.255 from 0.0.0.0, so a rule that
+# names a destination address — `allow in on usb0 to 10.42.0.1 port 67` — matches
+# renewals and not the request that would grant a new lease. The iPad then works
+# until it reconnects, and never again. Only a rule with no address restriction
+# covers the whole exchange.
+net_ufw_dhcp_rule() {
     local iface=$1 rules=$IVM_UFW_USER_RULES
     [[ -r $rules ]] || return 1
     awk -v i="$iface" '
         $1 == "-A" && index($0, "-i " i " ") && $0 ~ /-p udp/ && $0 ~ /--dport 67( |$)/ {
-            found = 1
+            restricted = 0
+            for (n = 1; n <= NF; n++) {
+                if ($n != "-d" && $n != "-s") continue
+                address = $(n + 1)
+                if (address != "0.0.0.0/0" && address != "any" && address != "0.0.0.0") {
+                    restricted = 1
+                }
+            }
+            if (restricted) narrow = 1
+            else broad = 1
         }
-        END { exit !found }' "$rules"
+        END {
+            if (broad) print "broad"
+            else if (narrow) print "narrow"
+        }' "$rules"
+}
+
+# True when the ruleset lets a fresh DHCP request through, which is what the
+# tablet needs after reconnecting.
+net_ufw_allows_dhcp() {
+    [[ $(net_ufw_dhcp_rule "$1") == broad ]]
 }

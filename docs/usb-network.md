@@ -125,6 +125,23 @@ ufw allow in on usb0 proto udp to any port 67 comment 'iPad USB DHCP'
 Do not open DHCP globally and do not disable the firewall. If UFW is not in
 use, the equivalent rule belongs in whatever firewall manager is active.
 
+**The rule must not name an address.** This is the trap that costs the most time,
+because it almost works:
+
+```text
+### this allows renewals, not new leases
+-A ufw-user-input -i usb0 -p udp -d 10.42.0.1 --dport 67 -j ACCEPT
+### this allows the whole exchange
+-A ufw-user-input -i usb0 -p udp --dport 67 -j ACCEPT
+```
+
+A client with a lease renews it by talking straight to the server, so the first
+rule passes. A client with no lease has no address yet: it sends from `0.0.0.0`
+to `255.255.255.255`, and a rule restricted to `10.42.0.1` does not match that
+packet. The symptom is an iPad that works until it reconnects and then never gets
+an address again. `ivm net status` reports the two cases separately, and
+`ivm net up` adds the interface-wide rule without removing yours.
+
 Confirm the full handshake in the logs:
 
 ```bash

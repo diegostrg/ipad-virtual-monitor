@@ -207,6 +207,10 @@ _net_converge_firewall() {
             if net_ufw_allows_dhcp "$iface"; then
                 return 0
             fi
+            if [[ $(net_ufw_dhcp_rule "$iface") == narrow ]]; then
+                ivm_warn "the existing DHCP rule for $iface is limited to a fixed address"
+                ivm_detail 'a new lease request is broadcast, so that rule does not match it'
+            fi
             # Scoped to the interface on purpose: the same rule globally would
             # answer DHCP on Wi-Fi too.
             _net_step "allowed DHCP in on $iface through ufw" \
@@ -339,14 +343,23 @@ _net_status() {
             ivm_ok 'no firewall service is active, so nothing blocks DHCP'
             ;;
         ufw)
-            if net_ufw_allows_dhcp "$iface"; then
-                ivm_ok "ufw allows DHCP in on $iface (saved ruleset)"
-                ivm_detail "verified in $IVM_UFW_USER_RULES; the live ruleset needs root"
-            else
-                ivm_fail "ufw has no DHCP rule for $iface"
-                ivm_detail "a dropped DHCP request leaves the iPad without an address"
-                ivm_detail 'add it with: ivm net up'
-            fi
+            case $(net_ufw_dhcp_rule "$iface") in
+                broad)
+                    ivm_ok "ufw allows DHCP in on $iface (saved ruleset)"
+                    ivm_detail "verified in $IVM_UFW_USER_RULES; the live ruleset needs root"
+                    ;;
+                narrow)
+                    ivm_fail "ufw allows DHCP to one address only, not to the broadcast"
+                    ivm_detail 'a new lease request goes to 255.255.255.255, which that rule does not match'
+                    ivm_detail 'the iPad keeps its lease until it reconnects, then gets nothing'
+                    ivm_detail 'add the interface-wide rule with: ivm net up'
+                    ;;
+                *)
+                    ivm_fail "ufw has no DHCP rule for $iface"
+                    ivm_detail "a dropped DHCP request leaves the iPad without an address"
+                    ivm_detail 'add it with: ivm net up'
+                    ;;
+            esac
             ;;
         *)
             ivm_warn "$(net_firewall_name) is active; its rules cannot be read without root"

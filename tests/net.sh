@@ -119,6 +119,29 @@ IVM_UFW_USER_RULES=$tmpdir/user.rules
 check 'a DHCP rule for the interface is found' 0 "$(status_of net_ufw_allows_dhcp usb0)"
 check 'another interface does not match it' 1 "$(status_of net_ufw_allows_dhcp usb9)"
 
+# A rule that names a destination covers renewals but not the broadcast that
+# would grant a new lease. This is the difference between "works until the
+# tablet reconnects" and working.
+cat >"$tmpdir/narrow.rules" <<'EOF'
+-A ufw-user-input -i usb0 -p udp -d 10.42.0.1 --dport 67 -j ACCEPT
+EOF
+IVM_UFW_USER_RULES=$tmpdir/narrow.rules
+check 'a destination-limited rule is narrow' narrow "$(net_ufw_dhcp_rule usb0)"
+check 'it does not count as DHCP allowed' 1 "$(status_of net_ufw_allows_dhcp usb0)"
+
+cat >"$tmpdir/source.rules" <<'EOF'
+-A ufw-user-input -i usb0 -p udp -s 10.42.0.0/24 --dport 67 -j ACCEPT
+EOF
+IVM_UFW_USER_RULES=$tmpdir/source.rules
+check 'a source-limited rule is narrow too' narrow "$(net_ufw_dhcp_rule usb0)"
+
+cat >"$tmpdir/open.rules" <<'EOF'
+-A ufw-user-input -i usb0 -p udp -d 0.0.0.0/0 --dport 67 -j ACCEPT
+EOF
+IVM_UFW_USER_RULES=$tmpdir/open.rules
+check 'an explicit any-destination rule is broad' broad "$(net_ufw_dhcp_rule usb0)"
+check 'and it counts as DHCP allowed' 0 "$(status_of net_ufw_allows_dhcp usb0)"
+
 cat >"$tmpdir/wrong-port.rules" <<'EOF'
 -A ufw-user-input -i usb0 -p udp --dport 68 -j ACCEPT
 -A ufw-user-input -i usb0 -p tcp --dport 67 -j ACCEPT
@@ -218,6 +241,12 @@ IVM_NET_STEPS=0
 capture _net_converge_firewall usb0
 check_contains 'a missing rule is added' 'ufw allow in on usb0' "$output"
 check_contains 'scoped to the interface' 'to any port 67 proto udp' "$output"
+
+IVM_UFW_USER_RULES=$tmpdir/narrow.rules
+IVM_NET_STEPS=0
+capture _net_converge_firewall usb0
+check_contains 'a destination-limited rule is not accepted' 'ufw allow in on usb0' "$output"
+check_contains 'and the reason is given' 'limited to a fixed address' "$output"
 
 net_firewall_name() { printf 'none'; }
 IVM_UFW_USER_RULES=$tmpdir/wrong-port.rules

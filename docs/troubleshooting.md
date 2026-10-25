@@ -15,6 +15,7 @@ layer 4, so never start with Sunshine.
 |---------|-------------------|-------------|
 | No `usbX` interface appears | 1 — USB link | `lsusb`, `journalctl -u usbmuxd` |
 | Interface exists, iPad has no IP | 2 — DHCP/firewall | `ivm net status`, UFW UDP/67 |
+| Works until the iPad reconnects, then it never gets an address | 2 — firewall destination | the DHCP rule must not name an address |
 | Ping fails | 2 — addressing | `ip neigh show dev usb0` |
 | Ping works, Moonlight cannot find host | 2/4 — firewall or listening address | `ss -lntup` |
 | Moonlight connects, black screen | 3 — virtual output | `hyprctl monitors` |
