@@ -22,13 +22,16 @@ before the previous phase is verified on real hardware.
 
 ## Phase 1 — Diagnosis
 
-- [ ] `ivm doctor`: read-only, walks all four layers
-- [ ] Detect distro, compositor, config dialect, Sunshine, NetworkManager, UFW
-- [ ] Detect `usbmuxd` build and whether it supports device mode 3
-- [ ] Detect support by inspecting the binary, not by guessing from a version
-- [ ] Report the first broken layer with a suggested fix
+- [x] `ivm doctor`: read-only, walks all four layers
+- [x] Detect distro, compositor, config dialect, Sunshine, NetworkManager, UFW
+- [x] Detect `usbmuxd` build and whether it supports device mode 3
+- [x] Detect support by inspecting the binary, not by guessing from a version
+- [x] Report the first broken layer with a suggested fix
+- [x] Exit codes suitable for scripting
+- [x] Detect leftover virtual outputs and a broken layout (gaps, overlaps)
 - [ ] `--report`: sanitized output for bug reports
-- [ ] Exit codes suitable for scripting
+- [ ] Warn when the firewall rule cannot be verified without root, and offer a
+      `--sudo` mode that checks it
 
 ## Phase 2 — Network
 
