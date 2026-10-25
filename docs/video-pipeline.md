@@ -247,6 +247,16 @@ ss -lntup | grep -E '47984|47989|48010|47998|47999|48000'
 
 The listening address must be `0.0.0.0` (or the USB address), not `127.0.0.1`.
 
+## Input and audio
+
+Both were verified from the iPad in the end-to-end test:
+
+- **Input** works through Sunshine's virtual HID device (`/dev/uinput`). Mouse
+  and keyboard reach the host without extra configuration on this machine.
+- **Audio** reaches the iPad, but it is also audible on the host: the captured
+  sink keeps playing locally. Users who want it only on the iPad must change the
+  audio routing themselves; the tool does not manage audio.
+
 ## Workspaces
 
 Hyprland already does the heavy lifting: workspaces bound to a monitor move to
