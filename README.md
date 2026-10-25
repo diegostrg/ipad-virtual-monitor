@@ -35,17 +35,50 @@ network between the two devices.
 - `ivm watch` — removes the output when the stream ends.
 - `ivm completion` — prints a completion script for bash, zsh or fish.
 
+## Install
+
+One command. It runs as your user, prints its plan first, and asks once:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/diegostrg/ipad-virtual-monitor/main/install.sh | bash
+```
+
+It does five things:
+
+1. downloads the tool into `~/.local/share/ipad-virtual-monitor` and links `ivm`
+   into `~/.local/bin`;
+2. builds the Apple USB stack if it is missing (5 to 10 minutes, needs network);
+3. installs Sunshine when your package manager has it;
+4. sets up the USB network and the firewall rule for it;
+5. prepares the streaming host and the supervisor.
+
+Every step is skipped when it is already done, so running it twice is boring.
+It never runs as root: the privileged steps call `sudo` one command at a time,
+after you have seen them. Plug the iPad in before the first run if you can,
+because the network step needs the device; without it the installer does
+everything else and tells you to run it again with the cable connected.
+
+If you would rather read it before trusting it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/diegostrg/ipad-virtual-monitor/main/install.sh
+less install.sh
+bash install.sh --dry-run    # the plan, printed and nothing else
+bash install.sh
+```
+
+`--dry-run` is available from any checkout too, and it changes nothing.
+
 ## Usage
 
 ```bash
-git clone https://github.com/diegostrg/ipad-virtual-monitor
-cd ipad-virtual-monitor
-ln -s "$PWD/bin/ivm" ~/.local/bin/ivm    # so `ivm` is on your PATH
-ivm up                                    # prepare the host
+ivm up        # prepare the host
+ivm status    # where things stand
+ivm doctor    # walk every layer when something is wrong
 ```
 
-Then connect from Moonlight. `ivm status` shows where things stand at any
-moment, and `ivm doctor` walks every layer when something is wrong.
+Then connect from Moonlight. `status` and `doctor` are read-only: run them as
+often as you like.
 
 ```text
 ivm status 0.1.0-dev
@@ -355,6 +388,7 @@ The details of each layer live in [docs/](docs/).
 | Component | Notes |
 |-----------|-------|
 | Linux with systemd | Tested on CachyOS (Arch-based) |
+| `git` | The installer downloads the tool and, if needed, the USB stack with it |
 | Wayland compositor | Hyprland is the first supported target |
 | NetworkManager | Used to share the USB interface |
 | `usbmuxd` with NCM support | Distro packages cannot switch the USB mode; `ivm deps` detects it and can build the stack |

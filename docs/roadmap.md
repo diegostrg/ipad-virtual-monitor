@@ -98,6 +98,8 @@ before the previous phase is verified on real hardware.
       `modules-load.d` persistence and the obsolete `virtual-display.service`
 - [ ] Detect and report leftover units and scripts from earlier attempts
 - [ ] Rewrite the private Spanish notes into public English documentation
+- [x] One-command installer: `install.sh`, with a plan, one confirmation and
+      idempotent re-runs
 - [ ] Publish on GitHub with screenshots and a short demo
 - [ ] Package for Arch (AUR) if there is demand
 
@@ -107,7 +109,6 @@ before the previous phase is verified on real hardware.
 - X11 desktops
 - Windows and macOS hosts
 - Wireless-only operation
-- Automatic compilation of the libimobiledevice stack
 - A graphical interface
 
 ## Open questions
