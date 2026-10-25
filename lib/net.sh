@@ -207,7 +207,9 @@ _net_converge_firewall() {
             if net_ufw_allows_dhcp "$iface"; then
                 return 0
             fi
-            if [[ $(net_ufw_dhcp_rule "$iface") == narrow ]]; then
+            # Said once, with the plan: the second pass would repeat it after the
+            # user has already read it.
+            if ! ((IVM_NET_APPLY)) && [[ $(net_ufw_dhcp_rule "$iface") == narrow ]]; then
                 ivm_warn "the existing DHCP rule for $iface is limited to a fixed address"
                 ivm_detail 'a new lease request is broadcast, so that rule does not match it'
             fi
