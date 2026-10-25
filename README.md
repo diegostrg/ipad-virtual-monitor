@@ -1,14 +1,14 @@
 # iPad Virtual Monitor (ivm)
 
 Use your iPad as a **second, extended display** on Linux over a single USB-C
-cable.
+cable!
 
 The iPad is not a physical monitor: the host creates an extra virtual output,
 Sunshine encodes it, and Moonlight on the iPad displays it. The same cable
 carries the video stream and a private USB network between the two devices.
 
 It is built to keep working: turn on the PC, plug in the iPad, open Moonlight,
-connect.
+connect!!! :)))
 
 ![A laptop with the iPad on a stand beside it, the iPad showing a terminal as an extended desktop](docs/images/laptop-and-ipad.jpg)
 
@@ -105,8 +105,10 @@ ivm status 0.1.0-dev
 | `ivm watch` | the supervisor: removes the output when the stream ends |
 | `ivm completion` | a completion script for bash, zsh or fish |
 
-Every command has `--help`, and the ones that change something have `--dry-run`.
-The full reference, with sample output, is in [docs/commands.md](docs/commands.md).
+`ivm help` lists the commands and `ivm help <command>` explains one of them.
+Every command also accepts `--help`, and the ones that change something accept
+`--dry-run`. The full reference, with sample output, is in
+[docs/commands.md](docs/commands.md).
 
 ## Configuration
 
@@ -131,7 +133,7 @@ with the size it divides: `2360x1640` at `1.6` works, `1920x1334` falls back to
 `1.0` and says so. With `FOLLOW_CLIENT=yes`, Moonlight's own resolution setting
 still wins: *Full / Safe Area* keeps the scale, *PC/Game resolution* drops it.
 
-## Something is wrong
+## Something is wrong?
 
 ```bash
 ivm doctor            # the first fail is the one to fix
@@ -152,7 +154,7 @@ the iPad shows a clone of the laptop panel, `ivm status` says so explicitly.
 - [Troubleshooting](docs/troubleshooting.md) — symptom → cause → fix
 - [Roadmap](docs/roadmap.md) — what is done and what comes next
 
-## Credits
+## Soooome Credits!
 
 The USB networking approach is inspired by
 [hkfuertes/virtual-screen](https://github.com/hkfuertes/virtual-screen), which
