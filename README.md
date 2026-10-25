@@ -19,8 +19,82 @@ network between the two devices.
 ## Status
 
 **Early development.** The repository is being built phase by phase; see
-[docs/roadmap.md](docs/roadmap.md). At this point it contains the design and the
-documented procedure, not a finished CLI.
+[docs/roadmap.md](docs/roadmap.md).
+
+- `ivm doctor` works today: read-only, no root, walks all four layers.
+- `ivm up`, `ivm down`, `ivm status`, `ivm watch` and `ivm display` are designed
+  and documented, not implemented.
+
+## Usage
+
+```bash
+git clone https://github.com/diegostrg/ipad-virtual-monitor
+cd ipad-virtual-monitor
+./bin/ivm doctor
+```
+
+```text
+ivm doctor 0.1.0-dev
+
+Host
+  distro         CachyOS
+  compositor     Hyprland 0.56.2, lua configuration
+  session        wayland-1
+  output         MOONLIGHT (side: right)
+
+Layer 1 — USB device
+  ok   iPad on the USB bus (product 12ab)
+  ok   network interfaces exposed: usb0,usb1
+  ok   usbmuxd is running
+  ok   usbmuxd supports USB device mode 3
+
+Layer 2 — USB network
+  ok   usb0 has 10.42.0.1/24
+  ok   NetworkManager connection: iPad-USB-Tethering
+  ok   a DHCP server is listening on UDP/67
+  ok   peer 10.42.0.42 answers in 1.67 ms
+  ok   usb1 is unmanaged (Apple private interface, correctly ignored)
+  warn ufw is active; the DHCP rule cannot be verified without root
+
+Layer 3 — Virtual output
+  ok   no Hyprland configuration errors
+  ok   no leftover virtual outputs
+  ok   MOONLIGHT exists: 2360x1640@60.00000 at 1920x0
+  ok   MOONLIGHT touches another output (pointer can reach it)
+  ok   Sunshine captures MOONLIGHT
+  ok   Sunshine has a prep command configured
+
+Layer 4 — Stream
+  ok   Sunshine is running (pid 4578)
+  ok   capture backend is wlr
+  ok   encoders available: Found H.264 encoder: h264_vaapi [vaapi],Found HEVC encoder: hevc_vaapi [vaapi]
+  ok   every Sunshine port listens on all interfaces
+  ok   a session is running: session::audio session::video video::capture
+
+Summary  19 ok, 2 warnings, 0 failures
+Usable, but the warnings above are worth fixing.
+```
+
+The report is ordered by dependency: the first `fail` is the one to fix, because
+everything below it is a precondition. Exit codes: `0` no failures, `1` at least
+one layer is broken, `2` bad usage.
+
+Add `--verbose` for paths and commands behind each check.
+
+### Configuration
+
+`ivm` reads `~/.config/ivm/config` if it exists. Every key is optional:
+
+```ini
+OUTPUT_NAME=MOONLIGHT   # name of the virtual output
+SIDE=right              # right, left, above or below the laptop panel
+WIDTH=1920              # fallback size when the client does not ask for one
+HEIGHT=1334
+FPS=60
+FOLLOW_CLIENT=yes       # prefer the size and rate Moonlight requests
+```
+
+Values are validated and the file is parsed, never sourced.
 
 ## Why another guide?
 

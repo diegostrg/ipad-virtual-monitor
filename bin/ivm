@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#
+# ipad-virtual-monitor — use an iPad as a second, extended display over USB-C.
+#
+# Entry point only: every subcommand lives in lib/ and is dispatched from here.
+# Nothing in this file changes the system.
+
+set -euo pipefail
+
+IVM_VERSION='0.1.0-dev'
+IVM_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && printf '%s' "$PWD")
+IVM_LIB_DIR=$IVM_ROOT/lib
+
+# shellcheck source=/dev/null
+for _module in common config platform usb network hyprland sunshine display doctor; do
+    . "$IVM_LIB_DIR/$_module.sh"
+done
+unset _module
+
+usage() {
+    cat <<EOF
+ivm $IVM_VERSION — turn an iPad into a second monitor over USB-C
+
+Usage:
+  ivm doctor [--verbose]   Inspect every layer and report what is broken
+  ivm version              Print the version
+  ivm help                 Print this help
+
+Planned, not implemented yet:
+  ivm up | down | status   Prepare the host, or tear it down
+  ivm watch                Keep the virtual output in sync with the session
+  ivm display              Create, remove or inspect the virtual output
+
+Read-only today: 'doctor' never changes the system.
+EOF
+}
+
+main() {
+    local command=${1:-help}
+    (($#)) && shift
+
+    case "$command" in
+        doctor)   ivm_doctor "$@" ;;
+        version|--version|-v) printf 'ivm %s\n' "$IVM_VERSION" ;;
+        help|--help|-h) usage ;;
+        *)
+            printf 'ivm: unknown command: %s\n\n' "$command" >&2
+            usage >&2
+            return "$IVM_EXIT_USAGE"
+            ;;
+    esac
+}
+
+main "$@"
