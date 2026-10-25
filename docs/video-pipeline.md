@@ -298,6 +298,12 @@ The one case the supervisor does cover on its own is a leftover: if the machine
 boots with `MOONLIGHT` still present and no client, the timer starts and the
 output disappears after the grace period.
 
+Removing the output also restarts Sunshine, for the reason in the next section.
+Because that happens in the background, the supervisor raises a desktop
+notification two seconds into the restart — after Hyprland has finished moving
+the workspaces back, so the popup is not swallowed by the transition. The delay
+runs in its own process and never holds the restart up.
+
 ## Focus side effects
 
 Creating a monitor in a live session is not neutral:

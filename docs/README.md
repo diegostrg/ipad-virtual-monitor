@@ -2,6 +2,7 @@
 
 | Document | What it answers |
 |----------|-----------------|
+| [commands.md](commands.md) | Every `ivm` command, its flags, its output and its exit codes |
 | [architecture.md](architecture.md) | How the four layers fit together and why the design looks like this |
 | [dependencies.md](dependencies.md) | Why the stock `usbmuxd` cannot do this, and what has to be built |
 | [usb-network.md](usb-network.md) | Why the iPad needs a USB device mode, and how it gets an IP address |
