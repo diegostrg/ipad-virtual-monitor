@@ -35,7 +35,7 @@ before the previous phase is verified on real hardware.
 ## Phase 3 — Display
 
 - [ ] `ivm display create` / `remove` / `status`
-- [ ] Use the explicit `IPAD` output name
+- [ ] Use the explicit `MOONLIGHT` output name
 - [ ] Compute position and scale from the current layout
 - [ ] Support Lua and legacy Hyprland dialects
 - [ ] Idempotent creation: `Name already taken` counts as success

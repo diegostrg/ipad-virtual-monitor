@@ -26,7 +26,7 @@ laptop screen.
 ┌──────────────────────────────────────────────────────────────────────┐
 │ 4. Stream      Sunshine ──► USB network ──► Moonlight (iPad)         │
 ├──────────────────────────────────────────────────────────────────────┤
-│ 3. Display     compositor virtual output (IPAD)                      │
+│ 3. Display     compositor virtual output (MOONLIGHT)                      │
 ├──────────────────────────────────────────────────────────────────────┤
 │ 2. Network     NetworkManager shared + DHCP + firewall               │
 ├──────────────────────────────────────────────────────────────────────┤
@@ -77,12 +77,12 @@ Two properties of that mechanism drive the whole design:
    `output_name = HEADLESS-1` in Sunshine therefore breaks the first time the
    output is recreated.
 
-The tool creates the output with an explicit name (`IPAD`), which makes the
+The tool creates the output with an explicit name (`MOONLIGHT`), which makes the
 name predictable and lets Sunshine point at it permanently.
 
 ### Layer 4 — Stream
 
-Sunshine captures the `IPAD` output and encodes it to H.264/HEVC. Moonlight on
+Sunshine captures the `MOONLIGHT` output and encodes it to H.264/HEVC. Moonlight on
 the iPad connects to the host's USB address (`10.42.0.1`), not to the iPad's own
 address.
 
@@ -123,7 +123,7 @@ desktop and a monitor the user cannot see. Creating it only while streaming
 keeps the desktop honest.
 
 **D2 — Deterministic output name.**
-`hyprctl output create headless IPAD` gives a name the tool controls.
+`hyprctl output create headless MOONLIGHT` gives a name the tool controls.
 Sunshine's `output_name` never has to change.
 
 **D3 — Prefer the client's resolution, with a known fallback.**

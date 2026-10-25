@@ -10,7 +10,7 @@ network between the two devices.
 ```text
         Linux host                                      iPad
 ┌────────────────────────┐      USB-C / CDC-NCM      ┌──────────────┐
-│  IPAD (virtual output) │                           │              │
+│  MOONLIGHT (virtual output) │                           │              │
 │  Sunshine              │──── H.264 / HEVC  ──────► │  Moonlight   │
 │  10.42.0.1             │◄─── mouse / keyboard ──── │  10.42.0.x   │
 └────────────────────────┘      DHCP / 10.42.0.0/24  └──────────────┘

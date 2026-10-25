@@ -53,7 +53,7 @@ returns.
 for i = 6, 10 do
   hl.workspace_rule({
     workspace = tostring(i),
-    monitor = "IPAD",
+    monitor = "MOONLIGHT",
     persistent = true,
     default = (i == 6),
   })
@@ -64,11 +64,11 @@ end
 
 ```ini
 # ~/.config/hypr/hyprland.conf
-workspace = 6, monitor:IPAD, default:true, persistent:true
-workspace = 7, monitor:IPAD, persistent:true
-workspace = 8, monitor:IPAD, persistent:true
-workspace = 9, monitor:IPAD, persistent:true
-workspace = 10, monitor:IPAD, persistent:true
+workspace = 6, monitor:MOONLIGHT, default:true, persistent:true
+workspace = 7, monitor:MOONLIGHT, persistent:true
+workspace = 8, monitor:MOONLIGHT, persistent:true
+workspace = 9, monitor:MOONLIGHT, persistent:true
+workspace = 10, monitor:MOONLIGHT, persistent:true
 ```
 
 Reload after editing:
@@ -76,6 +76,30 @@ Reload after editing:
 ```bash
 hyprctl reload
 ```
+
+## Moving workspaces between outputs
+
+Sometimes a workspace ends up on the wrong monitor, especially after an output
+appears or disappears. With the Lua API:
+
+```bash
+hyprctl eval 'hl.dispatch(hl.dsp.workspace.move({workspace = 2, monitor = "eDP-1"}))'
+```
+
+With a legacy configuration:
+
+```bash
+hyprctl dispatch moveworkspacetomonitor 2 eDP-1
+```
+
+Verify the result:
+
+```bash
+hyprctl workspaces -j
+```
+
+To move a single window instead of a whole workspace, focus it and use
+`hl.dsp.window.move({workspace = "2", follow = false})`.
 
 ## Remove stale virtual-monitor rules
 
@@ -92,7 +116,7 @@ grep -rnE 'Virtual-[0-9]|HEADLESS-' ~/.config/hypr/
 ```
 
 If you find any, delete the corresponding `hl.monitor({...})` block (Lua) or
-`monitor = ...` line (legacy). The tool uses `IPAD` exclusively and does not
+`monitor = ...` line (legacy). The tool uses `MOONLIGHT` exclusively and does not
 depend on those names.
 
 Check the result:

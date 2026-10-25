@@ -11,7 +11,7 @@ On X11 the usual trick is to force an HDMI connector on and drive it with
 the headless backend:
 
 ```bash
-hyprctl output create headless IPAD
+hyprctl output create headless MOONLIGHT
 ```
 
 This asks the compositor to allocate a new output. It behaves like a real
@@ -21,7 +21,7 @@ not visible on the laptop panel, which is exactly what we want.
 Remove it with:
 
 ```bash
-hyprctl output remove IPAD
+hyprctl output remove MOONLIGHT
 ```
 
 Two practical details, confirmed on real hardware:
@@ -49,7 +49,7 @@ configuration file recreates it automatically, which is why a setup that
 session, so destroying and recreating the output yields a different name.
 Pointing Sunshine at `HEADLESS-1` is therefore a race that eventually loses.
 
-Passing the name (`... headless IPAD`) makes it deterministic. Use that.
+Passing the name (`... headless MOONLIGHT`) makes it deterministic. Use that.
 
 ## Why `capture = wlr` and not `capture = kms`
 
@@ -81,13 +81,13 @@ on how Hyprland is configured:
 **Legacy configuration (`hyprland.conf`)**
 
 ```bash
-hyprctl keyword monitor IPAD,1920x1334@60,1920x0,1
+hyprctl keyword monitor MOONLIGHT,1920x1334@60,1920x0,1
 ```
 
 **Lua configuration (Hyprland 0.56+)**
 
 ```bash
-hyprctl eval 'hl.monitor({output="IPAD", mode="1920x1334@60", position="1920x0", scale=1.0})'
+hyprctl eval 'hl.monitor({output="MOONLIGHT", mode="1920x1334@60", position="1920x0", scale=1.0})'
 ```
 
 Notes that cost time to discover:
@@ -171,8 +171,8 @@ user service that reconciles the desired state with the real one:
 
 ```text
 every second:
-  if a session is active           → ensure IPAD exists
-  else if idle for > grace period  → ensure IPAD is gone
+  if a session is active           → ensure MOONLIGHT exists
+  else if idle for > grace period  → ensure MOONLIGHT is gone
 ```
 
 The grace period (20 s in the reference setup) absorbs reconnects, client
@@ -203,7 +203,7 @@ Minimum relevant keys:
 
 ```ini
 capture = wlr
-output_name = IPAD
+output_name = MOONLIGHT
 global_prep_cmd = [{"do":"ivm display prep"}]
 ```
 
@@ -275,12 +275,12 @@ not edit your configuration.
 
 1. `ip -4 addr show dev usb0` shows `10.42.0.1/24`.
 2. `ping` to the iPad succeeds.
-3. `hyprctl monitors` lists `IPAD` while streaming.
-4. Sunshine's monitor list includes `Monitor N is IPAD`.
+3. `hyprctl monitors` lists `MOONLIGHT` while streaming.
+4. Sunshine's monitor list includes `Monitor N is MOONLIGHT`.
 5. Moonlight connects to `10.42.0.1`, not to the iPad's address.
 6. The iPad shows a desktop area, not a copy of the laptop screen.
 7. The keyboard still works on the laptop after the output is created.
-8. After disconnecting, `IPAD` disappears once the grace period expires.
+8. After disconnecting, `MOONLIGHT` disappears once the grace period expires.
 
 ## Known traps
 

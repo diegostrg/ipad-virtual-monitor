@@ -18,11 +18,11 @@ layer 4, so never start with Sunshine.
 | Ping fails | 2 — addressing | `ip neigh show dev usb0` |
 | Ping works, Moonlight cannot find host | 2/4 — firewall or listening address | `ss -lntup` |
 | Moonlight connects, black screen | 3 — virtual output | `hyprctl monitors` |
-| Sunshine's monitor list has no `IPAD` | 3 — output missing | `hyprctl monitors`, supervisor state |
+| Sunshine's monitor list has no `MOONLIGHT` | 3 — output missing | `hyprctl monitors`, supervisor state |
 | iPad shows a clone of the laptop | 4 — capture backend | `capture` must be `wlr`, not `kms` |
 | Image appears but is blurry | 3 — resolution | output mode vs client request |
-| Keyboard stops responding after connecting | 3 — focus side effect | active window moved to `IPAD` |
-| Works after manual setup, breaks after reboot | 3 — ephemeral output | nothing recreates `IPAD` |
+| Keyboard stops responding after connecting | 3 — focus side effect | active window moved to `MOONLIGHT` |
+| Works after manual setup, breaks after reboot | 3 — ephemeral output | nothing recreates `MOONLIGHT` |
 | Output never disappears after disconnect | lifecycle — supervisor | `systemctl --user status ivm-watch` |
 | Works in terminal, fails from Sunshine | 4 — service environment | `HYPRLAND_INSTANCE_SIGNATURE` |
 | Input does not reach the host | 4 — permissions | uinput / udev rules |
@@ -130,7 +130,7 @@ hyprctl monitors
 hyprctl monitors all
 ```
 
-`IPAD` must be listed while a stream is active. If it is missing, Sunshine has
+`MOONLIGHT` must be listed while a stream is active. If it is missing, Sunshine has
 nothing to capture and the client sees a black screen.
 
 Check the name Sunshine is configured to use:
@@ -140,13 +140,13 @@ grep -E 'output_name|capture' ~/.config/sunshine/sunshine.conf
 ```
 
 If it points at `HEADLESS-1` (or any other stale name), it will never match.
-The generated `HEADLESS-n` names are not stable; use the explicit `IPAD` name.
+The generated `HEADLESS-n` names are not stable; use the explicit `MOONLIGHT` name.
 
 Check the compositor dialect before issuing runtime commands:
 
 ```bash
-hyprctl keyword monitor IPAD,1920x1334@60,1920x0,1   # legacy configs
-hyprctl eval 'hl.monitor({output="IPAD", mode="1920x1334@60", position="1920x0", scale=1.0})'   # Lua configs
+hyprctl keyword monitor MOONLIGHT,1920x1334@60,1920x0,1   # legacy configs
+hyprctl eval 'hl.monitor({output="MOONLIGHT", mode="1920x1334@60", position="1920x0", scale=1.0})'   # Lua configs
 ```
 
 `keyword can't work with non-legacy parsers` means you are on the Lua dialect.
@@ -162,20 +162,20 @@ hyprctl workspaces -j
 
 A disabled output is still listed by `monitors all` but is not rendered.
 
-### Sunshine's monitor list does not contain `IPAD`
+### Sunshine's monitor list does not contain `MOONLIGHT`
 
 At stream start Sunshine prints the outputs it can see:
 
 ```text
 [wlgrab] Monitor 0 is eDP-1: AUO 0x1234  (eDP-1)
-[wlgrab] Monitor 1 is IPAD:
+[wlgrab] Monitor 1 is MOONLIGHT:
 ```
 
-If `IPAD` is missing from that list, nothing will be captured. Check whether the
+If `MOONLIGHT` is missing from that list, nothing will be captured. Check whether the
 output exists and whether the supervisor is running:
 
 ```bash
-hyprctl monitors                          # does IPAD exist and is it enabled?
+hyprctl monitors                          # does MOONLIGHT exist and is it enabled?
 grep -E 'output_name|capture' ~/.config/sunshine/sunshine.conf
 systemctl --user status ivm-watch         # is the supervisor running?
 ```
@@ -194,7 +194,7 @@ a status. Use the monitor list and the actual image instead.
 ### Overlapping virtual monitors
 
 A leftover virtual output (for example a `vkms` connector) can be enabled at the
-same position as `IPAD`. Two monitors overlapping in the layout cause windows to
+same position as `MOONLIGHT`. Two monitors overlapping in the layout cause windows to
 land on an invisible area. Check for duplicates:
 
 ```bash
