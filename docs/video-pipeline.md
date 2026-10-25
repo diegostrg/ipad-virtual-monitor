@@ -127,17 +127,27 @@ disappear **after** the stream ends. Both sides of that window are awkward.
 
 ### Creation: the prep command
 
-`global_prep_cmd` runs on every stream launch. Measured order on real hardware:
+`global_prep_cmd` runs on every stream launch. Measured order on real hardware,
+with the virtual output absent when the client connected:
 
 ```text
-T+0.000   encoder probing starts
-T+0.123   Executing [Desktop]        ← prep command runs here
-T+0.189   CLIENT CONNECTED
-T+0.228   capture target selected    ← ~105 ms after the prep command
+23:48:37.188   encoder probing starts
+23:48:37.233   Executing [Desktop]        ← prep command runs here
+23:48:37.480   CLIENT CONNECTED
+23:48:37.481   Monitor 0 is eDP-1
+23:48:37.481   Monitor 1 is MOONLIGHT    ← created 248 ms earlier
+23:48:37.490   Creating encoder [hevc_vaapi]
+               Resolution: 1920x1334
 ```
 
-Creating the output takes ~10 ms, so the margin is sufficient. Without the prep
-command the output appears too late and Sunshine captures the laptop panel.
+The decisive detail is that Sunshine re-enumerates the outputs at
+`CLIENT CONNECTED`, not only at process start. An output created by the prep
+command therefore takes part in that enumeration, and the stream ends up on the
+virtual monitor with no leftover clone.
+
+This is the whole on-demand design working: the monitor did not exist before the
+client connected, nothing was running beforehand, and the result was a real
+extended desktop, not a copy of the laptop panel.
 
 ### Destruction: there is no reliable disconnect hook
 

@@ -10,6 +10,10 @@ before the previous phase is verified on real hardware.
 - [x] Architecture, USB network, video pipeline and troubleshooting documents
 - [x] Dependency documentation: why the distro `usbmuxd` cannot switch modes
 - [x] Findings from earlier attempts verified and folded into the design docs
+- [x] End-to-end verification on real hardware: headless output, `capture = wlr`,
+      extended desktop, input and audio
+- [x] On-demand creation verified: the output is created by the prep command
+      while Sunshine is already running, and the stream lands on it
 - [ ] Repository published on GitHub (deferred until the tool works)
 
 ## Phase 1 — Diagnosis
@@ -48,6 +52,8 @@ before the previous phase is verified on real hardware.
 ## Phase 4 — Orchestration
 
 - [ ] `ivm up` / `ivm down` / `ivm status`
+- [ ] Ensure Sunshine is running: it can die at boot before the compositor is up
+      and `Restart=on-failure` does not bring it back
 - [ ] Configure Sunshine hooks with a backup, without touching credentials
 - [ ] `ivm watch`: supervisor as a systemd user unit
 - [ ] Session detection from Sunshine's `/proc/<pid>/task/*/comm` threads
@@ -83,5 +89,8 @@ before the previous phase is verified on real hardware.
   stream.)
 - Should the network layer stay up permanently or follow the stream lifecycle?
   (Current assumption: stay up; it is harmless and makes reconnects instant.)
+- Should the tool ship a systemd drop-in that makes Sunshine survive a boot
+  race, or only detect and start it on demand? A drop-in is invasive; starting
+  it from the tool is not enough if the user never runs the tool.
 - How to handle iPads whose panel resolution does not match the requested
   stream size: letterbox or scale?
