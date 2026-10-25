@@ -36,7 +36,9 @@ PATH=$tmpdir/bin:$PATH
 failures=0
 checks=0
 
-count_notices() {
+# The announcement is scheduled in the background on purpose, so the test waits
+# for it in the shell that owns the job before counting.
+announcement() {
     local n
     n=$(grep -c -- "$1" "$NOTIFY_LOG" 2>/dev/null) || n=0
     printf '%s' "$n"
@@ -80,6 +82,7 @@ date() {
 }
 
 reset() {
+    wait 2>/dev/null
     output_present=0
     session_running=0
     removals=0
@@ -92,6 +95,7 @@ reset() {
     _IVM_WATCH_WAITING=0
     _IVM_WATCH_REARM_PENDING=0
     IVM_NOTIFY=yes
+    IVM_NOTIFY_DELAY=0
     NOTIFY_RC=0
     : >"$NOTIFY_LOG"
     # Per test, so a stub replaced by one case cannot leak into the next.
@@ -104,22 +108,22 @@ reset() {
 reset
 output_present=1
 session_running=1
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'a running stream keeps the output' 1 "$output_present"
 check 'a running stream resets the idle timer' 0 "$IVM_WATCH_IDLE_SINCE"
 
 fake_now=1010
 session_running=0
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'the idle timer starts when the stream ends' 1010 "$IVM_WATCH_IDLE_SINCE"
 check 'nothing is removed before the grace period' 1 "$output_present"
 
 fake_now=1029
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'still nothing one second before the end' 1 "$output_present"
 
 fake_now=1030
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'the output is removed when the grace period ends' 0 "$output_present"
 check 'the removal happens once' 1 "$removals"
 check 'the idle timer is reset after removing' 0 "$IVM_WATCH_IDLE_SINCE"
@@ -129,23 +133,23 @@ check 'the idle timer is reset after removing' 0 "$IVM_WATCH_IDLE_SINCE"
 reset
 output_present=1
 fake_now=2000
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 fake_now=2010
 session_running=1
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'a returning client cancels the removal' 1 "$output_present"
 check 'a returning client resets the timer' 0 "$IVM_WATCH_IDLE_SINCE"
 
 fake_now=2100
 session_running=0
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'the timer restarts from the new idle moment' 2100 "$IVM_WATCH_IDLE_SINCE"
 
 # --- grace zero removes immediately ---------------------------------------
 
 reset
 output_present=1
-_watch_reconcile 0 >/dev/null
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
 check 'grace 0 removes on the first check' 0 "$output_present"
 
 # --- Sunshine is re-armed so the next connection runs the prep ------------
@@ -157,16 +161,16 @@ check 'grace 0 removes on the first check' 0 "$output_present"
 reset
 output_present=1
 session_running=1
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'a running stream never restarts Sunshine' 0 "$restarts"
 
 session_running=0
 fake_now=4000
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'nothing restarts before the grace period' 0 "$restarts"
 
 fake_now=4020
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'the output goes before the restart' 0 "$output_present"
 check 'and Sunshine is restarted once' 1 "$restarts"
 check 'leaving no rearm pending' 0 "$_IVM_WATCH_REARM_PENDING"
@@ -175,26 +179,26 @@ check 'leaving no rearm pending' 0 "$_IVM_WATCH_REARM_PENDING"
 
 reset
 output_present=1
-_watch_reconcile 0 >/dev/null
-check 'the restart is announced' 1 "$(count_notices 'Restarting Sunshine')"
-check 'with the wait spelled out' 1 "$(count_notices 'Wait a few seconds')"
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
+check 'the restart is announced' 1 "$(announcement 'Restarting Sunshine')"
+check 'with the wait spelled out' 1 "$(announcement 'Wait a few seconds')"
 
 reset
 output_present=1
 session_running=1
-_watch_reconcile 0 >/dev/null
-check 'a running stream is not announced' 0 "$(count_notices 'Restarting Sunshine')"
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
+check 'a running stream is not announced' 0 "$(announcement 'Restarting Sunshine')"
 
 reset
 output_present=1
 IVM_NOTIFY=no
-_watch_reconcile 0 >/dev/null
-check 'NOTIFY=no silences it' 0 "$(count_notices 'Restarting Sunshine')"
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
+check 'NOTIFY=no silences it' 0 "$(announcement 'Restarting Sunshine')"
 
 reset
 output_present=1
 export NOTIFY_RC=1
-_watch_reconcile 0 >/dev/null
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
 check 'a notification that fails is not fatal' 0 "$output_present"
 check 'and the restart still happens' 1 "$restarts"
 
@@ -203,16 +207,16 @@ check 'and the restart still happens' 1 "$restarts"
 reset
 output_present=1
 restart_result=1
-_watch_reconcile 0 >/dev/null
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
 check 'a failed restart leaves the rearm pending' 1 "$_IVM_WATCH_REARM_PENDING"
-check 'and it is announced once' 1 "$(count_notices 'Restarting Sunshine')"
+check 'and it is announced once' 1 "$(announcement 'Restarting Sunshine')"
 check 'the output is removed anyway' 0 "$output_present"
 
 fake_now=5000
 restart_result=0
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'the next tick retries the restart' 2 "$restarts"
-check 'without announcing it again' 1 "$(count_notices 'Restarting Sunshine')"
+check 'without announcing it again' 1 "$(announcement 'Restarting Sunshine')"
 check 'and clears the pending flag' 0 "$_IVM_WATCH_REARM_PENDING"
 
 # --- a client that returns while the rearm is pending is not disturbed ----
@@ -220,20 +224,20 @@ check 'and clears the pending flag' 0 "$_IVM_WATCH_REARM_PENDING"
 reset
 output_present=1
 restart_result=1
-_watch_reconcile 0 >/dev/null
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
 check 'the rearm is pending after a failure' 1 "$_IVM_WATCH_REARM_PENDING"
 
 session_running=1
 restart_result=0
 restarts_before=$restarts
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'a returning client is not interrupted' "$restarts_before" "$restarts"
 check 'and the pending rearm is dropped' 0 "$_IVM_WATCH_REARM_PENDING"
 
 # --- no output means nothing to do ----------------------------------------
 
 reset
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'no output, no removal' 0 "$removals"
 check 'no output, no timer' 0 "$IVM_WATCH_IDLE_SINCE"
 
@@ -242,13 +246,13 @@ check 'no output, no timer' 0 "$IVM_WATCH_IDLE_SINCE"
 reset
 output_present=1
 hypr_env_discover() { return 1; }
-_watch_reconcile 0 >/dev/null
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
 check 'an unreachable compositor does not remove anything' 1 "$output_present"
 check 'a repeated failure is only announced once' 1 "$_IVM_WATCH_WAITING"
-_watch_reconcile 0 >/dev/null
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
 check 'and it is not announced again' 1 "$_IVM_WATCH_WAITING"
 hypr_env_discover() { return 0; }
-_watch_reconcile 0 >/dev/null
+_watch_reconcile 0 >/dev/null; wait 2>/dev/null
 check 'recovery is announced and clears the flag' 0 "$_IVM_WATCH_WAITING"
 
 # --- a failed removal is retried ------------------------------------------
@@ -257,14 +261,14 @@ reset
 output_present=1
 _display_remove() { removals=$((removals + 1)); return 1; }
 fake_now=3000
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 fake_now=3021
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'a failed removal is attempted once' 1 "$removals"
 check 'the output is still there after a failure' 1 "$output_present"
 
 fake_now=3022
-_watch_reconcile 20 >/dev/null
+_watch_reconcile 20 >/dev/null; wait 2>/dev/null
 check 'the next tick retries immediately instead of waiting again' 2 "$removals"
 
 printf '\n%d checks, %d failures\n' "$checks" "$failures"

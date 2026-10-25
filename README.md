@@ -376,12 +376,17 @@ a clone of the laptop panel instead.
 
 So when the supervisor removes the output, it also restarts Sunshine. With
 nobody connected that costs a few seconds and arms the hook for the next
-connection. Because that happens in the background, it sends a desktop
-notification first:
+connection. Because that happens in the background, it warns you with a desktop
+notification:
 
 ```text
 Restarting Sunshine — Wait a few seconds before reconnecting from Moonlight.
 ```
+
+It appears about two seconds *into* the restart, not before it: removing the
+output makes Hyprland move the workspaces back to the laptop panel, and a popup
+raised during that switch is sometimes swallowed. The delay runs in its own
+process, so it never holds the restart up.
 
 It uses `notify-send`, and it stays quiet if the tool or the notification daemon
 is missing: this is a courtesy, not a dependency. `NOTIFY=no` in the config turns

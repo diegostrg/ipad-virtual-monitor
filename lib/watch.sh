@@ -195,8 +195,7 @@ _watch_rearm() {
     # On the first attempt only: a retry every two seconds would fill the
     # notification list with the same sentence.
     if ((!_IVM_WATCH_REARM_PENDING)); then
-        ivm_notify 'Restarting Sunshine' \
-            'Wait a few seconds before reconnecting from Moonlight.'
+        _watch_announce
     fi
     if sunshine_rearm; then
         _IVM_WATCH_REARM_PENDING=0
@@ -206,6 +205,20 @@ _watch_rearm() {
     _IVM_WATCH_REARM_PENDING=1
     _watch_say 'could not restart Sunshine yet, will try again'
     return 1
+}
+
+# Raises the warning a couple of seconds *into* the restart, never before it.
+# Removing the output makes Hyprland move the workspaces back to the laptop
+# panel, and a popup raised during that switch is sometimes swallowed by the
+# transition. The delay runs in its own process, so the restart is not delayed.
+_watch_announce() {
+    [[ ${IVM_NOTIFY:-yes} == yes ]] || return 0
+    (
+        sleep "${IVM_NOTIFY_DELAY:-2}"
+        ivm_notify 'Restarting Sunshine' \
+            'Wait a few seconds before reconnecting from Moonlight.'
+    ) &
+    return 0
 }
 
 _watch_say() {
