@@ -40,25 +40,55 @@ unset _module
 
 usage() {
     cat <<EOF
-ivm $IVM_VERSION — turn an iPad into a second monitor over USB-C
+ivm $IVM_VERSION — an iPad as a second, extended display over USB-C
 
-Usage:
-  ivm up                   Prepare the host: Sunshine, its hook, the supervisor
-  ivm down [--all]         Remove the output and stop the supervisor
-  ivm status               One-screen summary of the current state
-  ivm net                  Report, set up or take down the USB network
-  ivm deps [status|build]  Inspect or build the Apple USB stack
-  ivm doctor [options]     Inspect every layer and report what is broken
-  ivm display              Create, remove or inspect the virtual output
-  ivm watch                Remove the output when the stream ends
-  ivm completion SHELL     Print completions for bash, zsh or fish
-  ivm version              Print the version
-  ivm help                 Print this help
+Usage: ivm <command> [options]
 
-'ivm up' never asks for root: whatever needs it is reported with the command.
-'ivm net up' needs root for the network; it prints every command and asks once.
-'ivm status', 'ivm doctor', 'ivm display status' and 'ivm net status' only read.
+Everyday
+  up            Prepare the host: Sunshine, its hook, the supervisor
+  status        One screen with the state of every layer
+  doctor        Check every layer and say what is broken (--report for an issue)
+  down          Remove the virtual output and stop the supervisor
+
+Setup
+  net           Report, set up or take down the USB network (asks before sudo)
+  deps          Inspect the Apple USB stack, or build it from source
+  display       Create, remove or inspect the virtual output
+  watch         Remove the output when the stream ends
+
+More
+  completion    Print a completion script for bash, zsh or fish
+  version       Print the version
+  help [CMD]    This help, or the help of one command
+
+Read-only: status, doctor, net status, display status, deps status.
+Nothing runs as root; the commands that need it print what they would run.
 EOF
+}
+
+# `ivm help <command>` delegates to the command's own --help, so the two can
+# never disagree about a flag.
+_ivm_help() {
+    local topic=${1:-}
+    case $topic in
+        ''|-h|--help) usage; return "$IVM_EXIT_OK" ;;
+        up)       ivm_up --help ;;
+        down)     ivm_down --help ;;
+        status)   ivm_status --help ;;
+        net)      ivm_net --help ;;
+        deps)     ivm_deps --help ;;
+        doctor)   ivm_doctor --help ;;
+        display)  ivm_display --help ;;
+        watch)    ivm_watch --help ;;
+        completion) ivm_completion --help ;;
+        version)  printf 'Usage: ivm version\n\nPrints the version and exits.\n' ;;
+        help)     usage ;;
+        *)
+            printf 'ivm: no help for unknown command: %s\n\n' "$topic" >&2
+            usage >&2
+            return "$IVM_EXIT_USAGE"
+            ;;
+    esac
 }
 
 main() {
@@ -83,7 +113,7 @@ main() {
         watch)    ivm_watch "$@" ;;
         completion) ivm_completion "$@" ;;
         version|--version|-v) printf 'ivm %s\n' "$IVM_VERSION" ;;
-        help|--help|-h) usage ;;
+        help|--help|-h) _ivm_help "$@" ;;
         *)
             printf 'ivm: unknown command: %s\n\n' "$command" >&2
             usage >&2

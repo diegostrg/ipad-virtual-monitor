@@ -111,6 +111,10 @@ _ivm_completion() {
         completion)
             COMPREPLY=($(compgen -W 'bash zsh fish' -- "$cur"))
             ;;
+        help)
+            # `ivm help <command>`: the same list, so the topics are discoverable.
+            COMPREPLY=($(compgen -W 'up down status net doctor display watch completion version help' -- "$cur"))
+            ;;
         *)
             COMPREPLY=($(compgen -W '--help' -- "$cur"))
             ;;
@@ -165,6 +169,7 @@ _ivm() {
                 display) _ivm_display ;;
                 watch) _ivm_watch ;;
                 completion) _ivm_shells ;;
+                help) _describe -t commands 'ivm command' commands ;;
             esac
             ;;
     esac
@@ -289,6 +294,9 @@ complete -c ivm -n __fish_use_subcommand -a help -d 'Print help'
 # verbose.
 complete -c ivm -s h -l help -d 'Print help'
 complete -c ivm -n __fish_use_subcommand -s v -l version -d 'Print the version'
+
+# `ivm help <command>`.
+complete -c ivm -n '__fish_seen_subcommand_from help' -a 'up down status net doctor display watch completion version help'
 
 # net.
 complete -c ivm -n '__fish_seen_subcommand_from net; and not __fish_seen_subcommand_from status up down help' -a status -d 'Report the USB network, read-only'

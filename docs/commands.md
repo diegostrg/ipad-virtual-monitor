@@ -1,7 +1,9 @@
 # Commands
 
-Every command accepts `--help`. The ones that change something accept
-`--dry-run`, and the ones that need root print their plan and ask once.
+`ivm help` lists the commands; `ivm help <command>` prints the usage of one of
+them, exactly as `<command> --help` does. Every command accepts `--help`, the
+ones that change something accept `--dry-run`, and the ones that need root print
+their plan and ask once.
 
 | Command | Root | Read-only |
 |---------|------|-----------|

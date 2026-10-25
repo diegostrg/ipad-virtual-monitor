@@ -154,6 +154,12 @@ check 'the shells are offered' \
     'bash zsh fish' \
     "$(bash_complete 'ivm completion ')"
 
+# `ivm help <command>` takes the command's own name, so the topics have to be
+# discoverable from the prompt.
+check 'help offers the commands' \
+    'up down status net doctor display watch completion version help' \
+    "$(bash_complete 'ivm help ')"
+
 # --- zsh -------------------------------------------------------------------
 
 if have zsh; then
@@ -186,6 +192,7 @@ if have fish; then
     check_lacks 'fish does not offer --version after a subcommand' '--version' \
         "$(fish_complete 'ivm doctor --')"
     check_contains 'fish offers the sides' 'above' "$(fish_complete 'ivm display create --side ')"
+    check_contains 'fish offers the help topics' 'net' "$(fish_complete 'ivm help ')"
 else
     skip 'fish is not installed'
 fi
