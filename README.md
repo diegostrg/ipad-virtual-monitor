@@ -16,6 +16,19 @@ network between the two devices.
 └────────────────────────┘      DHCP / 10.42.0.0/24  └──────────────┘
 ```
 
+![A laptop with the iPad on a stand beside it, the iPad showing a terminal as an extended desktop](docs/images/laptop-and-ipad.jpg)
+
+*One cable. The iPad is an extended desktop, not a mirror: workspace 4 lives on
+it, with its own windows and its own cursor.*
+
+Moonlight's statistics, on that same session:
+
+![Moonlight statistics: 2360x1640 at 60 fps, HEVC, 0% frames dropped, 2 ms of network latency](docs/images/moonlight-latency.png)
+
+`2 ms` is the network hop, and it stays there because there is no Wi-Fi in the
+path: the frame never leaves the cable. The host side is the time Sunshine needs
+to grab, encode and send each frame.
+
 ## Status
 
 **Early development.** The repository is being built phase by phase; see
