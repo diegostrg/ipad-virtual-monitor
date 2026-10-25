@@ -21,9 +21,11 @@ network between the two devices.
 **Early development.** The repository is being built phase by phase; see
 [docs/roadmap.md](docs/roadmap.md).
 
-- `ivm doctor` works today: read-only, no root, walks all four layers.
-- `ivm up`, `ivm down`, `ivm status`, `ivm watch` and `ivm display` are designed
-  and documented, not implemented.
+- `ivm doctor` — read-only, no root, walks all four layers.
+- `ivm display` — create, remove and inspect the virtual output.
+- `ivm watch` — removes the output when the stream ends.
+- `ivm up`, `ivm down` and `ivm status` are designed and documented, not
+  implemented.
 
 ## Usage
 
@@ -81,6 +83,45 @@ one layer is broken, `2` bad usage.
 
 Add `--verbose` for paths and commands behind each check.
 
+### The virtual output
+
+```bash
+ivm display status                 # what exists, and what would be created
+ivm display create --dry-run       # print the plan, change nothing
+ivm display create                 # create it at the size the client asked for
+ivm display create --side left --width 1920 --height 1334
+ivm display remove
+```
+
+The size comes from, in this order: the flags, the request Moonlight sent to
+Sunshine (`SUNSHINE_CLIENT_WIDTH/HEIGHT/FPS`), then the configuration file.
+Positions are computed from your real layout so the new screen always touches an
+existing one — a gap or an overlap looks like a working stream until the pointer
+has to cross it.
+
+Creating the output takes the focus away from what you were doing, so the tool
+snapshots the focused monitor and the active window and puts them back.
+
+### Keeping the desktop clean
+
+Hyprland never removes the output by itself, and Sunshine has no disconnect
+hook. `ivm watch` is the piece that closes the loop:
+
+```bash
+ivm watch                # foreground: removes MOONLIGHT 20 s after a disconnect
+ivm watch --once         # reconcile right now and exit
+```
+
+Run it as a user service so it survives a terminal being closed:
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp share/systemd/ivm-watch.service ~/.config/systemd/user/
+# edit ExecStart to point at this checkout, or symlink bin/ivm into ~/.local/bin
+systemctl --user daemon-reload
+systemctl --user enable --now ivm-watch
+```
+
 ### Configuration
 
 `ivm` reads `~/.config/ivm/config` if it exists. Every key is optional:
@@ -92,6 +133,7 @@ WIDTH=1920              # fallback size when the client does not ask for one
 HEIGHT=1334
 FPS=60
 FOLLOW_CLIENT=yes       # prefer the size and rate Moonlight requests
+GRACE=20                # seconds to wait before removing the output
 ```
 
 Values are validated and the file is parsed, never sourced.

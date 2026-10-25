@@ -45,20 +45,25 @@ before the previous phase is verified on real hardware.
 
 ## Phase 3 — Display
 
-- [ ] `ivm display create` / `remove` / `status`
-- [ ] Use the explicit `MOONLIGHT` output name
-- [ ] Compute position and scale from the current layout
-- [ ] Support Lua and legacy Hyprland dialects
-- [ ] Idempotent creation: `Name already taken` counts as success
-- [ ] `ivm display prep` hook for Sunshine (create before capture)
-- [ ] Resolution and refresh rate from the client request
+- [x] `ivm display create` / `remove` / `status`
+- [x] Use the explicit `MOONLIGHT` output name
+- [x] Compute the position from the current layout, excluding the target itself
+- [x] Configurable side: `right`, `left`, `above`, `below`
+- [x] Idempotent creation: `Name already taken` counts as success
+- [x] Idempotent removal: removing nothing is not a failure
+- [x] `ivm display prep` hook for Sunshine (create before capture)
+- [x] Resolution and refresh rate from the client request
       (`SUNSHINE_CLIENT_WIDTH/HEIGHT/FPS`), with the 1920×1334@60 fallback
-- [ ] Fixed size and rate as an explicit user override
-- [ ] Configurable side: `right`, `left`, `above`, `below`
-- [ ] Read back the applied mode instead of trusting the request
-- [ ] Snapshot and restore the focused monitor and the active window
-- [ ] Reconcile with existing monitor rules (`hl.monitor` replaces them)
-- [ ] Verify that Sunshine passes the client's dimensions to prep commands
+- [x] Fixed size and rate as an explicit user override
+- [x] Read back the applied mode instead of trusting the request
+- [x] Snapshot and restore the focused monitor and the active window
+- [x] Reconcile with existing monitor rules (`hl.monitor` replaces them)
+- [x] Verify that Sunshine passes the client's dimensions to prep commands
+- [x] Layout math uses logical pixels, so a scaled monitor is measured correctly
+- [x] `--dry-run`: print the plan without touching the compositor
+- [ ] Verify the legacy (non-Lua) Hyprland path on a real machine: the rule is
+      written, but the focus snapshot has no equivalent there
+- [ ] Honor a per-output scale from the config; 1.0 is hardcoded for now
 
 ## Phase 4 — Orchestration
 
@@ -66,9 +71,13 @@ before the previous phase is verified on real hardware.
 - [ ] Ensure Sunshine is running: it can die at boot before the compositor is up
       and `Restart=on-failure` does not bring it back
 - [ ] Configure Sunshine hooks with a backup, without touching credentials
-- [ ] `ivm watch`: supervisor as a systemd user unit
-- [ ] Session detection from Sunshine's `/proc/<pid>/task/*/comm` threads
-- [ ] Grace period before removing the output (default 20 s, configurable)
+- [x] `ivm watch`: supervisor that removes the output when the stream ends
+- [x] Session detection from Sunshine's `/proc/<pid>/task/*/comm` threads
+- [x] Grace period before removing the output (default 20 s, configurable)
+- [x] Warn when a stream runs but the output is missing, without guessing
+- [x] Bash tests for the supervisor's decision logic (`tests/watch.sh`)
+- [ ] Ship and install the systemd user unit
+      (`share/systemd/ivm-watch.service` exists, no installer yet)
 - [ ] Human-readable status table
 - [ ] Shell completions (bash, zsh, fish)
 

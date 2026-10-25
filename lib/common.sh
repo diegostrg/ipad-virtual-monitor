@@ -72,6 +72,18 @@ have() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Directory for logs and other runtime files. Created on demand, because a
+# read-only command must not create anything.
+#
+# The XDG location is used instead of a directory inside the repository: the
+# tool is meant to be installed somewhere else, and a log written next to the
+# code breaks as soon as that path is read-only.
+ivm_state_dir() {
+    local dir=${XDG_STATE_HOME:-$HOME/.local/state}/ivm
+    [[ -d $dir ]] || mkdir -p "$dir" 2>/dev/null || return 1
+    printf '%s' "$dir"
+}
+
 # Require a command, or fail with a message that says how to get it.
 require() {
     local cmd=$1 hint=${2:-}

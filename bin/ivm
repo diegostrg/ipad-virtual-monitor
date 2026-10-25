@@ -8,11 +8,22 @@
 set -euo pipefail
 
 IVM_VERSION='0.1.0-dev'
-IVM_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && printf '%s' "$PWD")
+
+# Resolve symlinks before looking for lib/: `ln -s .../bin/ivm ~/.local/bin/ivm`
+# is the simplest way to put the command on the PATH, and the libraries live next
+# to the real file, not next to the link.
+IVM_SELF=$(readlink -f -- "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")
+IVM_ROOT=$(cd -- "$(dirname -- "$IVM_SELF")/.." && printf '%s' "$PWD")
 IVM_LIB_DIR=$IVM_ROOT/lib
 
+if [[ ! -r $IVM_LIB_DIR/common.sh ]]; then
+    printf 'ivm: cannot find the libraries in %s\n' "$IVM_LIB_DIR" >&2
+    printf 'ivm: the whole repository is needed, not only bin/ivm\n' >&2
+    exit 1
+fi
+
 # shellcheck source=/dev/null
-for _module in common config platform usb network hyprland sunshine display doctor; do
+for _module in common config platform usb network hyprland sunshine display watch doctor; do
     . "$IVM_LIB_DIR/$_module.sh"
 done
 unset _module
@@ -23,24 +34,26 @@ ivm $IVM_VERSION — turn an iPad into a second monitor over USB-C
 
 Usage:
   ivm doctor [--verbose]   Inspect every layer and report what is broken
+  ivm display              Create, remove or inspect the virtual output
+  ivm watch                Remove the output when the stream ends
   ivm version              Print the version
   ivm help                 Print this help
 
 Planned, not implemented yet:
   ivm up | down | status   Prepare the host, or tear it down
-  ivm watch                Keep the virtual output in sync with the session
-  ivm display              Create, remove or inspect the virtual output
 
-Read-only today: 'doctor' never changes the system.
+'ivm doctor' and 'ivm display status' never change the system.
 EOF
 }
 
 main() {
     local command=${1:-help}
-    (($#)) && shift
+    if (($#)); then shift; fi
 
     case "$command" in
         doctor)   ivm_doctor "$@" ;;
+        display)  ivm_display "$@" ;;
+        watch)    ivm_watch "$@" ;;
         version|--version|-v) printf 'ivm %s\n' "$IVM_VERSION" ;;
         help|--help|-h) usage ;;
         *)

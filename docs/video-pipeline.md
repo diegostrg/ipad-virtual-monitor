@@ -221,20 +221,33 @@ expose session state.
 
 ### The supervisor
 
-Because creation is event-driven but destruction is not, the tool runs a small
-user service that reconciles the desired state with the real one:
+Because creation is event-driven but destruction is not, `ivm watch` polls the
+state and reconciles it:
 
 ```text
-every second:
-  if a session is active           → ensure MOONLIGHT exists
-  else if idle for > grace period  → ensure MOONLIGHT is gone
+every 2 s:
+  a session is running              → nothing to do
+  no session, output exists         → start the grace timer
+  still idle after the grace period → remove the output
 ```
 
-The grace period (20 s in the reference setup) absorbs reconnects, client
-resumes and short interruptions without destroying and recreating the monitor.
+The grace period (20 s by default, `--grace` or `GRACE=` in the config) absorbs
+reconnects, client resumes and short interruptions. Without it, an accidental
+disconnect would move every window back to the laptop panel and the reconnect
+would have to be started from scratch.
 
-The supervisor is also a safety net: if the prep command never ran, it still
-creates the output while a session is active.
+Removing the output is safe: Hyprland moves its workspaces back to a remaining
+monitor, so no window is lost.
+
+The supervisor does **not** create the output during a running session. It could
+not help: Sunshine picks its capture target at `CLIENT CONNECTED` and does not
+change it afterwards, so an output created later would simply sit unused. When
+that situation is detected, `ivm watch` says so once instead of pretending to
+fix it.
+
+The one case the supervisor does cover on its own is a leftover: if the machine
+boots with `MOONLIGHT` still present and no client, the timer starts and the
+output disappears after the grace period.
 
 ## Focus side effects
 
@@ -244,10 +257,16 @@ Creating a monitor in a live session is not neutral:
 - The **active window moves with it** to the new monitor's workspace, which can
   leave the user typing into a window they can no longer see.
 
-The tool snapshots the focused monitor, the active window address and its
-workspace before creating the output, and restores them afterwards. Removing an
-output has a smaller side effect: Hyprland centres the cursor on the remaining
-monitor.
+`ivm display create` snapshots the focused monitor, the active window address and
+its workspace before creating the output, and restores them afterwards. The
+snapshot uses the compositor's Lua API (`hl.get_active_monitor`,
+`hl.get_active_window`), which only exists on Hyprland 0.56 and later. On the
+legacy configuration dialect the rule is applied through `hyprctl keyword`, but
+the focus is not restored: that interface has no way to query or restore the
+window list, and a wrong guess would move a window the user cares about.
+
+Removing an output has a smaller side effect: Hyprland centres the cursor on the
+remaining monitor.
 
 These are compositor behaviours, not bugs to work around silently; they are
 documented so the user is not surprised.
@@ -261,6 +280,12 @@ capture = wlr
 output_name = MOONLIGHT
 global_prep_cmd = [{"do":"ivm display prep"}]
 ```
+
+The command must be an absolute path, because Sunshine does not inherit an
+interactive shell's `PATH`. `ivm display prep` always exits 0: a prep command
+that fails aborts the connection, and a compositor problem would then look like
+"the iPad cannot connect" with nothing in the log to explain it. It writes what
+it did to `~/.local/state/ivm/display.log` instead.
 
 | Key | Meaning |
 |-----|---------|

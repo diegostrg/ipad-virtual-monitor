@@ -24,7 +24,7 @@ layer 4, so never start with Sunshine.
 | Keyboard stops responding after connecting | 3 — focus side effect | active window moved to `MOONLIGHT` |
 | Keyboard and mouse work from the iPad, but the host cursor cannot reach it | 3 — layout | gap or overlap in `hyprctl monitors` |
 | Works after manual setup, breaks after reboot | 3 — ephemeral output | nothing recreates `MOONLIGHT` |
-| Output never disappears after disconnect | lifecycle — supervisor | `systemctl --user status ivm-watch` |
+| Output never disappears after disconnect | lifecycle — supervisor | `ivm watch --once`, `systemctl --user status ivm-watch` |
 | Works in terminal, fails from Sunshine | 4 — service environment | `HYPRLAND_INSTANCE_SIGNATURE` |
 | Input does not reach the host | 4 — permissions | uinput / udev rules |
 | Nothing works after a reboot, Moonlight cannot reach the host | 4 — Sunshine not running | `systemctl --user status ...Sunshine` |
@@ -315,17 +315,34 @@ The wlr backend captures virtual outputs through `wlr-screencopy`.
 
 ### The output never disappears after disconnecting
 
-Expected if nothing is supervising the lifecycle. `global_undo_cmd` is not a
+Expected when nothing is supervising the lifecycle. `global_undo_cmd` is not a
 disconnect hook: Sunshine runs it when the process terminates, not when the
-client leaves. Check the supervisor:
+client leaves.
+
+Remove the leftover now:
+
+```bash
+ivm display remove
+```
+
+Check whether the supervisor is running and what it decided:
 
 ```bash
 systemctl --user status ivm-watch
 journalctl --user -u ivm-watch -n 30
 ```
 
-The output is removed only after the grace period, by design, so a quick
-reconnect does not destroy and recreate the monitor.
+The output is removed only after the grace period (20 s by default), by design,
+so a quick reconnect does not destroy and recreate the monitor. To see what the
+supervisor would do right now without waiting:
+
+```bash
+ivm watch --once
+```
+
+If `ivm watch --once` removes the output but the leftover comes back, the
+supervisor is not running: enable it with
+`systemctl --user enable --now ivm-watch`.
 
 ### The disconnect never appears in the Sunshine log
 
@@ -377,6 +394,25 @@ systemctl --user show-environment | grep -E 'HYPRLAND|WAYLAND'
 
 If those variables are missing, fix how the service is started rather than
 hardcoding them.
+
+`ivm display prep` does not depend on them: when `hyprctl` cannot reach the
+compositor it looks for the control socket under `$XDG_RUNTIME_DIR/hypr/*/` and
+uses the instance that owns it. Note that reading `HYPRLAND_INSTANCE_SIGNATURE`
+from the Hyprland process itself does not work — Hyprland exports that variable to
+its children, not to itself.
+
+What the hook did is written to `~/.local/state/ivm/display.log`:
+
+```text
+=== 2026-10-25 00:19:41 prep start ===
+-- requested 2360x1640@60 (client) --
+  ok   MOONLIGHT is up: 2360x1640@60 at 1920x0 (side right)
+  ok   touches another output, so the pointer can reach it
+=== 2026-10-25 00:19:41 prep end ===
+```
+
+A prep command that fails aborts the connection, so this log is where the reason
+appears when the iPad shows nothing.
 
 ### Input does not work
 

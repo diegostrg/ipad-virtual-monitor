@@ -1,0 +1,21 @@
+[Unit]
+Description=ipad-virtual-monitor: remove the virtual output when the stream ends
+Documentation=https://github.com/diegostrg/ipad-virtual-monitor
+# The supervisor talks to Hyprland, so there is nothing it can do before the
+# compositor is up. It waits instead of failing.
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# Adjust this path to wherever the repository lives, or symlink bin/ivm into
+# ~/.local/bin and use %h/.local/bin/ivm.
+ExecStart=%h/.local/bin/ivm watch
+Restart=always
+RestartSec=5
+# A supervisor that keeps running is the whole point: the output is only removed
+# while it is alive.
+TimeoutStopSec=5
+
+[Install]
+WantedBy=graphical-session.target

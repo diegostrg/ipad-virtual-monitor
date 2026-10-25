@@ -12,9 +12,10 @@ IVM_WIDTH=${IVM_WIDTH:-1920}
 IVM_HEIGHT=${IVM_HEIGHT:-1334}
 IVM_FPS=${IVM_FPS:-60}
 IVM_FOLLOW_CLIENT=${IVM_FOLLOW_CLIENT:-yes}
+IVM_GRACE=${IVM_GRACE:-20}
 
 # Only these keys are accepted from the file.
-_ivm_config_keys='OUTPUT_NAME SIDE WIDTH HEIGHT FPS FOLLOW_CLIENT'
+_ivm_config_keys='OUTPUT_NAME SIDE WIDTH HEIGHT FPS FOLLOW_CLIENT GRACE'
 
 # Load the config file, if it exists. Unknown keys are ignored, malformed values
 # are refused with a message naming the key.
@@ -45,6 +46,7 @@ ivm_config_load() {
             HEIGHT) IVM_HEIGHT=$value ;;
             FPS) IVM_FPS=$value ;;
             FOLLOW_CLIENT) IVM_FOLLOW_CLIENT=$value ;;
+            GRACE) IVM_GRACE=$value ;;
         esac
     done <"$IVM_CONFIG_FILE"
 
@@ -86,6 +88,10 @@ ivm_config_validate() {
             status=$IVM_EXIT_PROBLEMS
             ;;
     esac
+    if [[ ! $IVM_GRACE =~ ^[0-9]+$ ]] || ((IVM_GRACE > 600)); then
+        ivm_error "config: GRACE must be a number of seconds up to 600, got '$IVM_GRACE'"
+        status=$IVM_EXIT_PROBLEMS
+    fi
 
     return "$status"
 }
