@@ -171,6 +171,7 @@ The CLI is a thin orchestrator plus one small user service:
 ivm up         = check the compositor → start Sunshine → point its prep hook at
                  this tool → install and start the supervisor → report the address
 ivm status     = one short screen: host, network, Sunshine, output, supervisor
+ivm net        = report the USB network, converge it, or take it down
 ivm down       = stop the supervisor → remove the virtual output
 ivm doctor     = walk every layer and explain what is broken
 ivm display    = create, remove or inspect the output (and the Sunshine hook)

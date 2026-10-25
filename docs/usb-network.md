@@ -159,6 +159,47 @@ Latency over the cable is typically around 1–3 ms with no packet loss.
 The most common mistake is entering the iPad's own address in Moonlight. The
 client must connect to the **host**.
 
+## Doing all of this with `ivm net`
+
+Everything on this page can be inspected and repaired from the CLI:
+
+```bash
+ivm net status     # read-only report: link, address, profile, DHCP, firewall
+ivm net up         # converge it: plan, one question, then apply
+ivm net down       # deactivate the shared connection, keep the configuration
+```
+
+The interesting part is how `up` handles root. Almost every repair here needs it
+— the connection profile, the NetworkManager configuration, the firewall rule —
+so the tool derives a plan from the current state, prints the exact commands, and
+asks once before running any of them:
+
+```text
+  plan sudo nmcli connection modify iPad-USB-Tethering ipv4.method shared ...
+  plan sudo tee /etc/NetworkManager/conf.d/99-ivm-usb.conf
+       [keyfile]
+       unmanaged-devices=interface-name:usb1
+  plan sudo ufw allow in on usb0 to any port 67 proto udp
+
+Apply 3 command(s) with sudo? [y/N]
+```
+
+Three properties are worth knowing:
+
+- **It adopts what is already there.** The profile is the one NetworkManager has
+  on the interface, whatever its name; a healthy profile produces no command at
+  all. Nothing is renamed, recreated or removed.
+- **It reads the result back.** A plan that reports success is followed by the
+  address, the DHCP listener and a ping, so "it ran" and "it works" are not
+  confused.
+- **It refuses to act silently.** `--dry-run` stops after the plan, `--yes`
+  applies it without asking, and without a terminal nothing is applied.
+
+`down` deactivates the shared connection and leaves every configuration file in
+place, so the next `net up` (or the next time the cable is plugged in) is
+instant. It exists for testing: if the network layer is not the problem, turning
+it off and on again should not change the symptom.
+
 ## Failure checklist
 
 1. Does the cable support data? Some USB-C cables are power-only.

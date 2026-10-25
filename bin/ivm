@@ -35,7 +35,7 @@ if [[ ! -r $IVM_LIB_DIR/common.sh ]]; then
 fi
 
 # shellcheck source=/dev/null
-for _module in common config platform usb network hyprland sunshine display watch up status doctor; do
+for _module in common config platform usb network net hyprland sunshine display watch up status doctor; do
     . "$IVM_LIB_DIR/$_module.sh"
 done
 unset _module
@@ -48,6 +48,7 @@ Usage:
   ivm up                   Prepare the host: Sunshine, its hook, the supervisor
   ivm down [--all]         Remove the output and stop the supervisor
   ivm status               One-screen summary of the current state
+  ivm net                  Report, set up or take down the USB network
   ivm doctor [--verbose]   Inspect every layer and report what is broken
   ivm display              Create, remove or inspect the virtual output
   ivm watch                Remove the output when the stream ends
@@ -55,7 +56,8 @@ Usage:
   ivm help                 Print this help
 
 'ivm up' never asks for root: whatever needs it is reported with the command.
-'ivm status', 'ivm doctor' and 'ivm display status' never change the system.
+'ivm net up' needs root for the network; it prints every command and asks once.
+'ivm status', 'ivm doctor', 'ivm display status' and 'ivm net status' only read.
 EOF
 }
 
@@ -74,6 +76,7 @@ main() {
         up)       ivm_up "$@" ;;
         down)     ivm_down "$@" ;;
         status)   ivm_status "$@" ;;
+        net)      ivm_net "$@" ;;
         doctor)   ivm_doctor "$@" ;;
         display)  ivm_display "$@" ;;
         watch)    ivm_watch "$@" ;;

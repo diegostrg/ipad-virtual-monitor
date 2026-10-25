@@ -14,7 +14,7 @@ layer 4, so never start with Sunshine.
 | Symptom | Most likely layer | First check |
 |---------|-------------------|-------------|
 | No `usbX` interface appears | 1 — USB link | `lsusb`, `journalctl -u usbmuxd` |
-| Interface exists, iPad has no IP | 2 — DHCP/firewall | `ip -4 addr show dev usb0`, UFW UDP/67 |
+| Interface exists, iPad has no IP | 2 — DHCP/firewall | `ivm net status`, UFW UDP/67 |
 | Ping fails | 2 — addressing | `ip neigh show dev usb0` |
 | Ping works, Moonlight cannot find host | 2/4 — firewall or listening address | `ss -lntup` |
 | Moonlight connects, black screen | 3 — virtual output | `hyprctl monitors` |
@@ -29,6 +29,17 @@ layer 4, so never start with Sunshine.
 | Works in terminal, fails from Sunshine | 4 — service environment | `HYPRLAND_INSTANCE_SIGNATURE` |
 | Input does not reach the host | 4 — permissions | uinput / udev rules |
 | Nothing works after a reboot, Moonlight cannot reach the host | 4 — Sunshine not running | `systemctl --user status ...Sunshine` |
+
+## Start here for anything below layer 2
+
+```bash
+ivm doctor        # which layer is broken, in order
+ivm net status    # layer 2 in detail: link, address, profile, DHCP, firewall
+ivm net up        # repair layer 2, showing every command before running it
+```
+
+The rest of this document explains the same things by hand, which is what you
+need when the tool itself is the suspect.
 
 ## Layer 1 — no USB network interface
 

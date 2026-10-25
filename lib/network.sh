@@ -92,3 +92,118 @@ net_firewall_name() {
         printf 'none'
     fi
 }
+
+# ---------------------------------------------------------------------------
+# Inspecting the NetworkManager configuration
+# ---------------------------------------------------------------------------
+#
+# Everything below reads. The commands that change the system live in `ivm net`,
+# which announces each one and asks before running it as root.
+
+# The connection profile bound to an interface: the active one, or any profile
+# that names the interface. Returns non-zero when there is none yet.
+net_profile_for_iface() {
+    local iface=$1 name bound
+    name=$(net_active_connection "$iface")
+    if [[ -n $name ]]; then
+        printf '%s' "$name"
+        return 0
+    fi
+    while IFS= read -r name; do
+        [[ -n $name ]] || continue
+        bound=$(net_profile_field "$name" connection.interface-name)
+        if [[ $bound == "$iface" ]]; then
+            printf '%s' "$name"
+            return 0
+        fi
+    done < <(LC_ALL=C nmcli -t -f NAME connection show 2>/dev/null)
+    return 1
+}
+
+# One property of a saved connection profile, read-only.
+net_profile_field() {
+    local name=$1 field=$2
+    LC_ALL=C nmcli -g "$field" connection show "$name" 2>/dev/null
+}
+
+# True when the profile is what the USB link needs: a shared IPv4 network with
+# its own DHCP server, no IPv6, and automatic activation when the cable appears.
+#
+# A shared connection is the whole trick: NetworkManager runs dnsmasq for it, so
+# the iPad gets an address without anything else being configured.
+net_profile_healthy() {
+    local name=$1 iface=$2 method ipv6 auto bound
+    method=$(net_profile_field "$name" ipv4.method)
+    [[ $method == shared ]] || return 1
+    ipv6=$(net_profile_field "$name" ipv6.method)
+    case $ipv6 in
+        disabled|ignore) ;;
+        *) return 1 ;;
+    esac
+    auto=$(net_profile_field "$name" connection.autoconnect)
+    [[ $auto == yes ]] || return 1
+    bound=$(net_profile_field "$name" connection.interface-name)
+    [[ -z $bound || $bound == "$iface" ]]
+}
+
+# True when the profile is active on the interface right now.
+net_profile_active() {
+    local name=$1 iface=$2
+    [[ $(net_active_connection "$iface") == "$name" ]]
+}
+
+# Configuration files NetworkManager reads, in the order it reads them.
+IVM_NM_CONF_DIR=${IVM_NM_CONF_DIR:-/etc/NetworkManager}
+
+net_nm_conf_files() {
+    local dir=$IVM_NM_CONF_DIR file
+    if [[ -r $dir/NetworkManager.conf ]]; then
+        printf '%s\n' "$dir/NetworkManager.conf"
+    fi
+    for file in "$dir"/conf.d/*.conf; do
+        [[ -r $file ]] && printf '%s\n' "$file"
+    done
+}
+
+# True when a NetworkManager configuration file already marks the interface
+# unmanaged, so the setting survives a reload and a reboot.
+net_iface_unmanaged_configured() {
+    local iface=$1 file line
+    while IFS= read -r file; do
+        [[ -n $file ]] || continue
+        while IFS= read -r line; do
+            [[ $line == *unmanaged-devices* ]] || continue
+            [[ $line == *"interface-name:${iface}"* ]] && return 0
+        done <"$file"
+    done < <(net_nm_conf_files)
+    return 1
+}
+
+# The value for `unmanaged-devices`, one entry per interface.
+#
+# Semicolons separate the entries; commas are what NetworkManager uses between
+# properties, not between list items.
+net_unmanaged_value() {
+    local iface out=''
+    for iface in "$@"; do
+        out+="${out:+;}interface-name:${iface}"
+    done
+    printf '%s' "$out"
+}
+
+IVM_UFW_USER_RULES=${IVM_UFW_USER_RULES:-/etc/ufw/user.rules}
+
+# True when the saved UFW ruleset allows DHCP on the interface.
+#
+# The live ruleset needs root to read; the saved one does not, and a rule that
+# exists in the file but was never reloaded is a different problem that `ivm net
+# up` answers with `ufw reload`.
+net_ufw_allows_dhcp() {
+    local iface=$1 rules=$IVM_UFW_USER_RULES
+    [[ -r $rules ]] || return 1
+    awk -v i="$iface" '
+        $1 == "-A" && index($0, "-i " i " ") && $0 ~ /-p udp/ && $0 ~ /--dport 67( |$)/ {
+            found = 1
+        }
+        END { exit !found }' "$rules"
+}

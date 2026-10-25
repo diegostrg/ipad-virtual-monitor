@@ -30,21 +30,20 @@ before the previous phase is verified on real hardware.
 - [x] Exit codes suitable for scripting
 - [x] Detect leftover virtual outputs and a broken layout (gaps, overlaps)
 - [ ] `--report`: sanitized output for bug reports
-- [ ] Warn when the firewall rule cannot be verified without root, and offer a
-      `--sudo` mode that checks it
+- [x] Read the saved UFW ruleset without root instead of warning that it cannot
+      be verified
 
 ## Phase 2 — Network
 
-The network is detected and reported by `ivm doctor`, `ivm status` and `ivm up`,
-but not managed yet: creating or repairing the connection still means running the
-commands those reports suggest.
-
 - [x] Detect the iPad data interface without hardcoding `usb0`
-- [ ] `ivm net up` / `ivm net down` / `ivm net status`, idempotent
-- [ ] Create or repair the NetworkManager shared profile
-- [ ] Mark the Apple private interface unmanaged
-- [ ] Add the scoped DHCP firewall rule only if a known firewall is active
-- [ ] Verify the DHCP handshake and report the iPad's address
+- [x] `ivm net up` / `ivm net down` / `ivm net status`, idempotent
+- [x] Create or repair the NetworkManager shared profile
+      (adopting the profile already bound to the interface)
+- [x] Mark the Apple private interface unmanaged, persistently
+- [x] Add the scoped DHCP firewall rule only if a known firewall is active
+- [x] Verify the DHCP handshake and report the iPad's address
+- [x] Print every root command, ask once, then apply; `--dry-run` and `--yes`
+- [ ] firewalld and nftables: add the rule instead of describing it
 - [ ] Instructions for `usbmuxd` (no automatic compilation yet)
 
 ## Phase 3 — Display

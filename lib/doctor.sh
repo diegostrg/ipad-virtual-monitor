@@ -171,13 +171,26 @@ _doctor_network() {
         fi
     done
 
-    if net_firewall_active; then
-        ivm_warn "$(net_firewall_name) is active; the DHCP rule cannot be verified without root"
-        ivm_detail "check with: sudo ufw status | grep '$iface'"
-        ivm_detail "expected: allow in on $iface proto udp to any port 67"
-    else
-        ivm_ok 'no firewall service is active'
-    fi
+    # The saved UFW ruleset is world-readable, so this does not need root. A rule
+    # that is saved but was never reloaded is caught by `ivm net status` instead.
+    case $(net_firewall_name) in
+        none)
+            ivm_ok 'no firewall service is active'
+            ;;
+        ufw)
+            if net_ufw_allows_dhcp "$iface"; then
+                ivm_ok "ufw allows DHCP in on $iface"
+            else
+                ivm_warn "ufw has no DHCP rule for $iface"
+                ivm_detail 'the iPad will not get an address while that request is dropped'
+                ivm_detail 'add it with: ivm net up'
+            fi
+            ;;
+        *)
+            ivm_warn "$(net_firewall_name) is active; its rules cannot be read without root"
+            ivm_detail "allow UDP/67 in on $iface if the iPad never gets an address"
+            ;;
+    esac
 }
 
 _doctor_display() {
@@ -225,7 +238,7 @@ _doctor_display() {
             if ! sunshine_session_active; then
                 ivm_warn "$IVM_OUTPUT_NAME is still present although no stream is running"
                 ivm_detail 'the prep command creates it, but nothing removes it on disconnect'
-                ivm_detail 'that is the job of the supervisor (ivm watch), still to be built'
+                ivm_detail 'that is the job of the supervisor; check: systemctl --user status ivm-watch'
             fi
         else
             ivm_info "$IVM_OUTPUT_NAME exists but is disabled"

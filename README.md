@@ -25,6 +25,8 @@ network between the two devices.
   tool, installs and starts the supervisor.
 - `ivm status` — one short screen with the state of every layer.
 - `ivm down` — removes the output and stops the supervisor.
+- `ivm net` — reports the USB network, sets it up, or takes it down. It needs
+  root for the network itself, so it prints every command and asks once.
 - `ivm doctor` — read-only, no root, walks all four layers and explains failures.
 - `ivm display` — create, remove and inspect the virtual output by hand.
 - `ivm watch` — removes the output when the stream ends.
@@ -67,6 +69,58 @@ so line by line:
 It never asks for root. Anything that needs it is printed as the command to run.
 `ivm down` undoes the runtime state (output removed, supervisor stopped) but
 leaves the configuration alone, so the next `ivm up` is instant.
+
+### The USB network
+
+The link itself needs no setup once the machine has it: NetworkManager brings the
+shared network back every time the iPad appears, even across reboots. What can
+still be wrong is its configuration, and that is what `ivm net` looks at.
+
+```bash
+ivm net status              # read-only: link, address, profile, DHCP, firewall
+ivm net up --dry-run        # the plan, without running anything
+ivm net up                  # show the plan, ask once, then apply it
+ivm net down                # deactivate the shared connection
+```
+
+```text
+ivm net status 0.1.0-dev
+
+Link
+  ok   Apple device on the USB bus (product id 12ab)
+  ok   data interface: usb0
+
+Address
+  ok   usb0 has 10.42.0.1/24 (network 10.42.0.0/24)
+  ok   the iPad is at 10.42.0.42, answering in 1.85 ms
+
+NetworkManager
+  ok   'iPad-USB-Tethering': shared IPv4, no IPv6, autoconnect
+  ok   'iPad-USB-Tethering' is active on usb0
+  ok   usb1 is unmanaged, and stays so after a reload
+
+DHCP
+  ok   a DHCP server is listening on UDP/67
+  ok   ufw allows DHCP in on usb0 (saved ruleset)
+```
+
+`ivm net up` only touches what is wrong. On a machine that already works it has
+nothing to do and says so; when something is missing it explains the change
+first:
+
+```text
+  plan sudo nmcli connection modify iPad-USB-Tethering ipv4.method shared ...
+  plan sudo tee /etc/NetworkManager/conf.d/99-ivm-usb.conf
+       [keyfile]
+       unmanaged-devices=interface-name:usb1
+  plan sudo ufw allow in on usb0 to any port 67 proto udp
+
+Apply 3 command(s) with sudo? [y/N]
+```
+
+It never removes anything you configured and never changes the firewall beyond
+one rule scoped to the USB interface. `--yes` skips the question for scripts;
+without a terminal it refuses to apply anything at all.
 
 ### Diagnosing
 
