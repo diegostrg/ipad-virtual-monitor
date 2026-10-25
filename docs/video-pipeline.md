@@ -156,10 +156,12 @@ extended desktop, not a copy of the laptop panel.
 the client disconnects. Using it to delete the output causes a
 create/delete/create loop.
 
-The log is not a reliable signal either. `CLIENT CONNECTED` is always written,
-but `CLIENT DISCONNECTED` usually is not: with the Desktop app (placebo, id 0)
-the control loop in `src/stream.cpp` stops iterating before it processes the
-disconnect event.
+The log is not a reliable signal either. `CLIENT DISCONNECTED` is written when the
+client closes the session cleanly (quitting the app), as observed on
+2026-10-24 at 23:53:25 after disconnecting from the iPad. It is **not** written
+when the client disappears uncleanly: network loss, a killed app or a suspended
+tablet leave no line at all. A tool that waits for that line will keep the
+virtual output alive forever after a crash.
 
 The reliable signal is the set of threads Sunshine creates for a session:
 

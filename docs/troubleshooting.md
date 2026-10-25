@@ -289,11 +289,15 @@ reconnect does not destroy and recreate the monitor.
 
 ### The disconnect never appears in the Sunshine log
 
-Known behaviour. With the Desktop app (placebo, id 0), the control loop in
-`src/stream.cpp` stops before it processes the disconnect event, so
-`CLIENT DISCONNECTED` is usually missing.
+Known behaviour, and the reason the lifecycle cannot be driven by logs.
+`CLIENT DISCONNECTED` appears only when the client closes the session cleanly:
 
-Do not build automation on that log line. Use the session threads instead:
+```text
+2026-10-24 23:53:25.477 Info: CLIENT DISCONNECTED   ← quit from the app
+```
+
+Network loss, a killed app or a suspended tablet produce no line at all. Do not
+build automation on that log line. Use the session threads instead:
 
 ```bash
 pid=$(pgrep -x sunshine | head -1)
