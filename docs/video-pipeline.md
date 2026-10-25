@@ -100,6 +100,24 @@ Notes that cost time to discover:
   `mode`, `position` and `scale` must be passed together.
 - `hyprctl eval` does not print return values, but the Lua state persists
   between calls. A value can be stored in a global and read by a later call.
+- **A scale is only accepted when both logical dimensions come out whole.**
+  Hyprland divides the mode by the scale to get the layout size, and a fractional
+  result is not usable, so it falls back to an integer scale instead of failing.
+  Verified on Hyprland 0.56.2:
+
+  | Mode | Scale asked for | Logical size | Scale applied |
+  |------|-----------------|--------------|---------------|
+  | 2360×1640 | 1.6 | 1475 × 1025 | **1.6** |
+  | 1920×1334 | 1.6 | 1200 × 833.75 | 2 |
+  | 1920×1334 | 1.5 | 1280 × 889.33 | 2 |
+
+  That is why a scale that looks reasonable with one mode is ignored with
+  another: `1640 / 1.6` is exact and `1334 / 1.6` is not. A tool that offers a
+  scale must check the arithmetic against the mode it is about to apply.
+- **Positions are in layout pixels, not physical ones.** The layout is the
+  desktop after dividing by the scale, so a 2360 px wide output at scale 1.6
+  occupies 1475 px of layout. Placing it with the physical width leaves a gap
+  that looks like a working stream until the pointer has to cross it.
 
 The position is computed from the current layout rather than hardcoded, so the
 virtual monitor lands beside the laptop panel regardless of its resolution.

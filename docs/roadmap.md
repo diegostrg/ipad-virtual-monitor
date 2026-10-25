@@ -35,7 +35,11 @@ before the previous phase is verified on real hardware.
 
 ## Phase 2 — Network
 
-- [ ] Detect the iPad data interface without hardcoding `usb0`
+The network is detected and reported by `ivm doctor`, `ivm status` and `ivm up`,
+but not managed yet: creating or repairing the connection still means running the
+commands those reports suggest.
+
+- [x] Detect the iPad data interface without hardcoding `usb0`
 - [ ] `ivm net up` / `ivm net down` / `ivm net status`, idempotent
 - [ ] Create or repair the NetworkManager shared profile
 - [ ] Mark the Apple private interface unmanaged

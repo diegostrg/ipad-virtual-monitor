@@ -131,21 +131,17 @@ hyprctl configerrors
 If you use a bar, a small status line is handy:
 
 ```bash
-ivm status --short
+ivm status
 ```
-
-This is planned, not implemented yet; see [roadmap.md](roadmap.md).
 
 ## Optional: autostart
 
 Nothing is required at login. The virtual output is created when a stream
 starts, so an autostart entry only adds a phantom monitor you cannot see.
 
-If you prefer to bring the network up automatically:
-
-```bash
-systemctl --user enable --now ivm-network.service   # planned
-```
+The USB network does not need an autostart entry: NetworkManager brings it back
+on its own when the iPad appears, which is verified across reboots. Only the
+supervisor is installed as a user service, and `ivm up` does that.
 
 ## Reverting
 

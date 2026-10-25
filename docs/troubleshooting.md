@@ -21,6 +21,7 @@ layer 4, so never start with Sunshine.
 | Sunshine's monitor list has no `MOONLIGHT` | 3 — output missing | `hyprctl monitors`, supervisor state |
 | iPad shows a clone of the laptop | 4 — capture backend | `capture` must be `wlr`, not `kms` |
 | Image appears but is blurry | 3 — resolution | output mode vs client request |
+| The scale I chose is ignored or becomes 2 | 3 — mode and scale | the scale must divide the mode into whole pixels |
 | Keyboard stops responding after connecting | 3 — focus side effect | active window moved to `MOONLIGHT` |
 | Keyboard and mouse work from the iPad, but the host cursor cannot reach it | 3 — layout | gap or overlap in `hyprctl monitors` |
 | Works after manual setup, breaks after reboot | 3 — ephemeral output | nothing recreates `MOONLIGHT` |
@@ -192,6 +193,25 @@ Sunshine prints this line even when the stream works correctly:
 
 It appears on successful sessions too. It is noise from the capture backend, not
 a status. Use the monitor list and the actual image instead.
+
+### The scale I chose is ignored
+
+Hyprland divides the mode by the scale to get the layout size, and a fractional
+result is not usable, so it silently falls back to an integer scale instead of
+refusing the rule. The scale therefore has to divide **both** dimensions into
+whole pixels:
+
+| Mode | Scale | Layout size | Applied |
+|------|-------|-------------|---------|
+| 2360×1640 | 1.6 | 1475 × 1025 | 1.6 |
+| 1920×1334 | 1.6 | 1200 × 833.75 | 2 |
+| 1920×1334 | 1.5 | 1280 × 889.33 | 2 |
+
+Check what the compositor really applied instead of trusting the request:
+
+```bash
+hyprctl monitors | sed -n '/MOONLIGHT/,/^$/p' | grep scale
+```
 
 ### Overlapping virtual monitors
 
