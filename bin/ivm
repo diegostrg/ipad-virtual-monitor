@@ -7,8 +7,6 @@
 
 set -euo pipefail
 
-IVM_VERSION='0.1.0-dev'
-
 # Resolve symlinks before looking for lib/: `ln -s .../bin/ivm ~/.local/bin/ivm`
 # is the simplest way to put the command on the PATH, and the libraries live next
 # to the real file, not next to the link.
@@ -35,7 +33,7 @@ if [[ ! -r $IVM_LIB_DIR/common.sh ]]; then
 fi
 
 # shellcheck source=/dev/null
-for _module in common config platform usb network net hyprland sunshine display watch up status doctor; do
+for _module in common config platform usb network net hyprland sunshine display watch up status doctor completion; do
     . "$IVM_LIB_DIR/$_module.sh"
 done
 unset _module
@@ -49,9 +47,10 @@ Usage:
   ivm down [--all]         Remove the output and stop the supervisor
   ivm status               One-screen summary of the current state
   ivm net                  Report, set up or take down the USB network
-  ivm doctor [--verbose]   Inspect every layer and report what is broken
+  ivm doctor [options]     Inspect every layer and report what is broken
   ivm display              Create, remove or inspect the virtual output
   ivm watch                Remove the output when the stream ends
+  ivm completion SHELL     Print completions for bash, zsh or fish
   ivm version              Print the version
   ivm help                 Print this help
 
@@ -80,6 +79,7 @@ main() {
         doctor)   ivm_doctor "$@" ;;
         display)  ivm_display "$@" ;;
         watch)    ivm_watch "$@" ;;
+        completion) ivm_completion "$@" ;;
         version|--version|-v) printf 'ivm %s\n' "$IVM_VERSION" ;;
         help|--help|-h) usage ;;
         *)

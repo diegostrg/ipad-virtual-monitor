@@ -7,12 +7,23 @@
 # here changes the system, and nothing here needs root.
 
 ivm_doctor() {
-    local arg
+    local arg report=0
     for arg in "$@"; do
         case $arg in
             --verbose|-v) IVM_VERBOSE=1 ;;
+            --report) report=1 ;;
             -h|--help)
-                printf 'Usage: ivm doctor [--verbose]\n\nRead-only inspection of every layer.\n'
+                cat <<'EOF'
+Usage: ivm doctor [--verbose] [--report]
+
+Read-only inspection of every layer.
+
+  --verbose   Show the paths and commands behind each check
+  --report    Print the same survey as a sanitized report for a bug tracker
+
+A report is always verbose, never coloured, and replaces addresses, hardware
+identifiers and home paths with placeholders so it can be pasted in public.
+EOF
                 return "$IVM_EXIT_OK"
                 ;;
             *)
@@ -21,6 +32,11 @@ ivm_doctor() {
                 ;;
         esac
     done
+
+    if ((report)); then
+        _doctor_report
+        return $?
+    fi
 
     ivm_config_load || return "$IVM_EXIT_PROBLEMS"
 
@@ -32,6 +48,101 @@ ivm_doctor() {
     _doctor_stream
 
     _doctor_summary
+}
+
+# ---------------------------------------------------------------------------
+# --report
+# ---------------------------------------------------------------------------
+
+# The same survey, made safe to paste in public.
+#
+# A useful bug report is the verbose one, and the verbose one contains an
+# address, a hostname and a home path. Redacting that by hand is tedious and
+# easy to get wrong, so the tool does it and says what it did. The report is
+# captured first so the sanitizer sees the whole text at once and cannot miss a
+# line, and so no colour can leak into a text box.
+_doctor_report() {
+    # Colours are for a terminal. A report ends up in a text field.
+    IVM_C_RESET=''
+    IVM_C_DIM=''
+    IVM_C_RED=''
+    IVM_C_GREEN=''
+    IVM_C_YELLOW=''
+    IVM_C_BOLD=''
+    # A report without the details is not worth sending.
+    IVM_VERBOSE=1
+
+    local file rc=0
+    file=$(mktemp "${TMPDIR:-/tmp}/ivm-report.XXXXXX") || {
+        ivm_error 'report: cannot create a temporary file'
+        return "$IVM_EXIT_PROBLEMS"
+    }
+
+    # A broken configuration must not swallow the report: its error lines are
+    # part of what needs diagnosing.
+    {
+        ivm_config_load 2>&1 || true
+        _doctor_host
+        _doctor_usb
+        _doctor_network
+        _doctor_display
+        _doctor_stream
+        _doctor_summary
+    } >"$file" || rc=$?
+
+    _doctor_report_print "$file" || rc=$?
+    rm -f -- "$file"
+    return "$rc"
+}
+
+_doctor_report_print() {
+    local file=$1
+    printf 'ivm report %s\n' "$IVM_VERSION"
+    printf 'generated %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    printf 'kernel %s %s\n' "$(uname -sr)" "$(uname -m)"
+    printf 'shell bash %s\n' "${BASH_VERSION}"
+    printf '\n'
+    printf 'Placeholders: <ip>, <mac>, <host>, <user>. Nothing was changed on this machine.\n'
+    printf 'Copy everything between the two rules into the issue.\n'
+    printf '%s\n' '----------------------------------------------------------------------'
+    _doctor_sanitize <"$file" | sed '/./,$!d'
+    printf '%s\n' '----------------------------------------------------------------------'
+    printf 'End of report.\n'
+}
+
+# Replace what identifies the machine with a placeholder of the same shape.
+#
+# The shape is the point: `<ip>/24` answers "is there a subnet" just as well as
+# `10.42.0.1/24`, while the real lease says something about the user. Addresses,
+# MACs, the hostname, the user name and home paths are the five things that
+# turn a diagnostic into personal data.
+_doctor_sanitize() {
+    local -a rules=(
+        # Escape codes, in case a caller set them back.
+        -e 's/\x1b\[[0-9;]*[A-Za-z]//g'
+        # Hardware addresses first: they contain colons and would survive the
+        # address rule, but the address rule cannot match them anyway.
+        -e 's/\b([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\b/<mac>/g'
+        -e 's/\b([0-9]{1,3}\.){3}[0-9]{1,3}\b/<ip>/g'
+        -e 's#(^|[[:space:]])/home/[A-Za-z0-9._-]+#\1/home/<user>#g'
+    )
+
+    local host=${HOSTNAME:-} user=${USER:-}
+    # The user first: their name appears in paths and can be the hostname too,
+    # and a home directory is the more identifying of the two.
+    if [[ -n $user ]]; then
+        rules+=(-e "s/\\b$(_doctor_sanitize_escape "$user")\\b/<user>/g")
+    fi
+    if [[ -n $host && $host != "$user" ]]; then
+        rules+=(-e "s/\\b$(_doctor_sanitize_escape "$host")\\b/<host>/g")
+    fi
+
+    sed -E "${rules[@]}"
+}
+
+# Escape a literal so it can be embedded in an ERE unchanged.
+_doctor_sanitize_escape() {
+    printf '%s' "$1" | sed 's/[][\\.^$*+?(){}|/]/\\&/g'
 }
 
 _doctor_host() {
@@ -364,6 +475,7 @@ _doctor_summary() {
 
     if ((IVM_COUNT_FAIL > 0)); then
         printf 'Fix the first failure: everything above it is a precondition.\n'
+        printf 'To report a bug, run: ivm doctor --report\n'
         return "$IVM_EXIT_PROBLEMS"
     fi
     if ((IVM_COUNT_WARN > 0)); then

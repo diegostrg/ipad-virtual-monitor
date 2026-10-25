@@ -2,6 +2,10 @@
 #
 # Output helpers, capability checks and exit codes shared by every command.
 
+# One version, one place. bin/ivm does not define it, so the libraries are
+# usable on their own, which is what the tests do.
+IVM_VERSION='0.1.0-dev'
+
 IVM_EXIT_OK=0
 IVM_EXIT_PROBLEMS=1
 IVM_EXIT_USAGE=2

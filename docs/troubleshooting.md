@@ -7,7 +7,8 @@ layer 4, so never start with Sunshine.
 1. USB link  →  2. IP network  →  3. virtual output  →  4. stream
 ```
 
-`ivm doctor` (planned) automates this walk. Until then, use the checks below.
+`ivm doctor` automates this walk: it checks the layers in order and the first
+failure is the one to fix. The matrix below is for reading the result.
 
 ## Quick matrix
 
@@ -465,17 +466,22 @@ udev rule shipped with Sunshine. This is independent of the display pipeline.
 ## Collecting a useful bug report
 
 ```bash
-ivm doctor --report      # planned
+ivm doctor --report
 ```
 
-Until then, include:
+It prints the whole survey, verbose, with no colour, and sanitized: addresses,
+MACs, the hostname, your user name and home paths are replaced with `<ip>`,
+`<mac>`, `<host>` and `<user>`. Copy what is between the two rules.
 
-- distro and kernel version,
-- Hyprland version and config dialect,
-- Sunshine version and the relevant config keys,
-- `ip -br link`, `ip -4 addr`, `ip neigh`,
-- `hyprctl monitors all`,
-- the last 50 lines of `journalctl -u usbmuxd` and NetworkManager,
-- whether `ping` to the iPad works.
+The report covers the state of every layer, not the history that led to it. For
+a failure that leaves no trace in the current state, add the relevant log lines
+yourself:
 
-Remove serial numbers and MAC addresses before publishing.
+```bash
+journalctl -u usbmuxd --since "5 minutes ago"
+journalctl -u NetworkManager --since "5 minutes ago"
+journalctl --user -u app-dev.lizardbyte.app.Sunshine --since "5 minutes ago"
+```
+
+Read those before pasting: journal lines are not sanitized, and they can contain
+the iPad's MAC address and serial number.

@@ -28,8 +28,10 @@ network between the two devices.
 - `ivm net` — reports the USB network, sets it up, or takes it down. It needs
   root for the network itself, so it prints every command and asks once.
 - `ivm doctor` — read-only, no root, walks all four layers and explains failures.
+  `--report` turns that into a sanitized report you can paste into an issue.
 - `ivm display` — create, remove and inspect the virtual output by hand.
 - `ivm watch` — removes the output when the stream ends.
+- `ivm completion` — prints a completion script for bash, zsh or fish.
 
 ## Usage
 
@@ -175,6 +177,21 @@ one layer is broken, `2` bad usage.
 
 Add `--verbose` for paths and commands behind each check.
 
+### Reporting a bug
+
+`ivm doctor --report` runs the same survey and prints it as plain text for an
+issue. The report is always verbose and never coloured, and it is **sanitized**:
+addresses, MACs, the hostname, your user name and home paths become `<ip>`,
+`<mac>`, `<host>` and `<user>` placeholders. The shape survives, so `<ip>/24`
+still says there is a subnet, and the person reading it gets the diagnosis
+without your details.
+
+```bash
+ivm doctor --report            # copy what is between the two rules
+```
+
+Nothing is uploaded by the tool. It is for you to paste where you choose.
+
 ### The virtual output
 
 ```bash
@@ -260,6 +277,28 @@ SCALE=1.6
 With `FOLLOW_CLIENT=yes`, Moonlight's own resolution setting still wins, so
 choosing *PC/Game resolution* there (`1920×1334`) drops the scale back to `1.0`
 and says so. Choose *Full / Safe Area* to get the mode that carries `1.6`.
+
+### Shell completions
+
+`ivm completion` prints a script for the shell you name. They are plain text kept
+with the source, so there is no generated file, no install hook and nothing to
+rebuild.
+
+```bash
+# bash
+ivm completion bash > ~/.local/share/bash-completion/completions/ivm
+
+# zsh (the file must be named _ivm and its directory must be in $fpath)
+mkdir -p ~/.zfunc
+ivm completion zsh > ~/.zfunc/_ivm
+# in ~/.zshrc, before compinit runs: fpath=(~/.zfunc $fpath)
+
+# fish
+ivm completion fish > ~/.config/fish/completions/ivm.fish
+```
+
+For the current session only, after `compinit` has run:
+`eval "$(ivm completion zsh)"`, or `eval "$(ivm completion bash)"` in bash.
 
 ## Why another guide?
 

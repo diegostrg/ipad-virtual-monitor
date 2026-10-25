@@ -29,7 +29,7 @@ before the previous phase is verified on real hardware.
 - [x] Report the first broken layer with a suggested fix
 - [x] Exit codes suitable for scripting
 - [x] Detect leftover virtual outputs and a broken layout (gaps, overlaps)
-- [ ] `--report`: sanitized output for bug reports
+- [x] `--report`: sanitized output for bug reports
 - [x] Read the saved UFW ruleset without root instead of warning that it cannot
       be verified
 
@@ -85,7 +85,7 @@ before the previous phase is verified on real hardware.
 - [x] Bash tests for the supervisor's decision logic (`tests/watch.sh`)
 - [x] Bash tests for the Sunshine configuration writer
       (`tests/sunshine-conf.sh`)
-- [ ] Shell completions (bash, zsh, fish)
+- [x] Shell completions (bash, zsh, fish)
 
 ## Phase 5 — Hardening and release
 
