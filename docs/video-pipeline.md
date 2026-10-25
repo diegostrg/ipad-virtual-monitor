@@ -287,12 +287,18 @@ Encoder choice on hybrid laptops:
 Sunshine listens on all IPv4 interfaces by default, which is required for the
 USB path:
 
-| Port | Protocol | Purpose |
-|------|----------|---------|
-| 47984 | TCP | HTTPS |
-| 47989 | TCP | HTTP |
-| 48010 | TCP | RTSP |
-| 47998–48000 | UDP | Video, control, audio |
+| Port | Protocol | Purpose | When it is open |
+|------|----------|---------|-----------------|
+| 47984 | TCP | HTTPS | always |
+| 47989 | TCP | HTTP | always |
+| 48010 | TCP | RTSP | always |
+| 47998 | UDP | Video | only during a session |
+| 47999 | UDP | Control | only during a session |
+| 48000 | UDP | Audio | only during a session |
+
+The TCP ports are opened at startup. The UDP media ports appear when a client
+starts streaming and disappear when it stops, so checking them while idle says
+nothing about the host's health — a common false alarm.
 
 Verify:
 

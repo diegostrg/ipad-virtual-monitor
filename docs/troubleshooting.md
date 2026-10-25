@@ -268,6 +268,10 @@ ss -lntup | grep -E '47984|47989|48010'
 `127.0.0.1:47989` means it is bound to loopback only; the iPad will never reach
 it. It must be `0.0.0.0:47989` or the USB address.
 
+Only the TCP ports are permanent. `47998`, `47999` and `48000` are UDP and only
+open while a client is streaming, so their absence when idle is normal and not a
+fault to chase.
+
 Confirm the firewall allows Sunshine's ports on the USB interface. The safest
 approach is to scope the rules to `usb0` rather than opening them globally.
 

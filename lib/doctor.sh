@@ -222,6 +222,11 @@ _doctor_display() {
                     ivm_detail 'the cursor cannot cross empty space; the mouse never reaches it'
                     ;;
             esac
+            if ! sunshine_session_active; then
+                ivm_warn "$IVM_OUTPUT_NAME is still present although no stream is running"
+                ivm_detail 'the prep command creates it, but nothing removes it on disconnect'
+                ivm_detail 'that is the job of the supervisor (ivm watch), still to be built'
+            fi
         else
             ivm_info "$IVM_OUTPUT_NAME exists but is disabled"
         fi
@@ -292,8 +297,11 @@ _doctor_stream() {
         ivm_detail 'it may be missing, rotated or empty; check it manually'
     fi
 
+    # The TCP ports are opened at startup. The UDP media ports only exist while a
+    # client is streaming, so treating them as a failure when idle would report
+    # a healthy host as broken.
     local port address bad=0
-    for port in $IVM_SUNSHINE_PORTS_TCP $IVM_SUNSHINE_PORTS_UDP; do
+    for port in $IVM_SUNSHINE_PORTS_TCP; do
         address=$(sunshine_port_address "$port")
         if [[ -z $address ]]; then
             ivm_fail "port $port is not listening"
@@ -304,12 +312,25 @@ _doctor_stream() {
             bad=1
         fi
     done
-    ((bad)) || ivm_ok 'every Sunshine port listens on all interfaces'
+    ((bad)) || ivm_ok 'every Sunshine control port listens on all interfaces'
 
     if sunshine_session_active; then
+        bad=0
+        for port in $IVM_SUNSHINE_PORTS_UDP; do
+            address=$(sunshine_port_address "$port")
+            if [[ -z $address ]]; then
+                ivm_fail "media port $port is not listening during a session"
+                bad=1
+            elif [[ $address == 127.0.0.1 || $address == '::1' ]]; then
+                ivm_fail "media port $port only listens on loopback ($address)"
+                bad=1
+            fi
+        done
+        ((bad)) || ivm_ok 'every Sunshine media port listens on all interfaces'
         ivm_ok "a session is running: $(sunshine_session_threads | paste -sd' ' -)"
     else
         ivm_info 'no active session'
+        ivm_detail 'the UDP media ports open only while a client streams'
     fi
 }
 
