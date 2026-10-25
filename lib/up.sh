@@ -221,6 +221,11 @@ _up_network() {
 
     iface=$(usb_data_interface)
     if [[ -z $iface ]]; then
+        # Just plugged in: give the device a moment to be switched and enumerated
+        # instead of reporting a fault that resolves itself.
+        iface=$(usb_wait_for_data_interface 5) || iface=''
+    fi
+    if [[ -z $iface ]]; then
         ivm_fail 'the iPad exposes no network interface'
         ivm_detail 'usbmuxd must request USB device mode 3; see docs/dependencies.md'
         return 0

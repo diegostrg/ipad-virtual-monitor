@@ -118,8 +118,13 @@ _doctor_network() {
 
     local iface
     iface=$(usb_data_interface)
+    if [[ -z $iface ]] && usb_ipad_present; then
+        iface=$(usb_wait_for_data_interface 3) || iface=''
+    fi
     if [[ -z $iface ]]; then
         ivm_fail 'no usable USB interface to carry the network'
+        ivm_detail 'if the cable was just plugged in, give it a few seconds'
+        ivm_detail 'otherwise usbmuxd must request USB device mode 3; see docs/dependencies.md'
         return 0
     fi
 

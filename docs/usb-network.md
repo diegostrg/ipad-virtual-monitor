@@ -75,6 +75,28 @@ unmanaged-devices=interface-name:usb1
 Prefer matching the interface name locally; if it changes, match by driver and
 MAC address instead.
 
+## The first seconds after plugging in
+
+Plugging the cable is not instantaneous, and the sequence explains a confusion
+that costs time: for a few seconds the iPad is on the bus with **no `usbN`
+interface at all**.
+
+1. The kernel enumerates the device in its default configuration.
+2. `usbmuxd` detects it and asks for the data mode; the device re-enumerates.
+3. The CDC-NCM interfaces appear (`usb0` for data, `usb1` for the Apple
+   multiplexor).
+4. NetworkManager activates the shared profile and starts its DHCP server.
+5. The iPad asks for an address and gets one.
+
+Between steps 1 and 3 there is nothing to inspect, so a report issued in that
+window is not evidence of a fault. `ivm` waits instead of failing: `ivm net up`
+waits up to 15 seconds for the interface and says it is waiting, `ivm net status`
+gives it 3 seconds and then reports a `warn` rather than a `fail`, and `ivm up`
+and `ivm doctor` wait before deciding the same thing.
+
+If the interface never appears, the problem is `usbmuxd`: it must be the build
+that requests the device mode. See [dependencies.md](dependencies.md).
+
 ## Sharing the connection
 
 `ipv4.method shared` tells NetworkManager to act as the DHCP server and router

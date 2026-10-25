@@ -16,6 +16,9 @@
 
 IVM_NET_PROFILE=${IVM_NET_PROFILE:-ipad-usb}
 IVM_NET_CONF=${IVM_NET_CONF:-/etc/NetworkManager/conf.d/99-ivm-usb.conf}
+# How long to wait for the interface after the cable appears. Measured on the
+# reference machine; see docs/usb-network.md.
+IVM_NET_WAIT=${IVM_NET_WAIT:-15}
 
 # Whether the plan is being applied. Set to 1 only after the user agrees.
 IVM_NET_APPLY=0
@@ -260,9 +263,16 @@ _net_status() {
     local iface
     iface=$(usb_data_interface)
     if [[ -z $iface ]]; then
-        ivm_fail 'the iPad exposes no network interface'
-        ivm_detail 'usbmuxd must request USB device mode 3; see docs/dependencies.md'
-        return "$IVM_EXIT_PROBLEMS"
+        # A few seconds of grace: the interface is created after usbmuxd switches
+        # the device, and a report issued in that window would be wrong.
+        iface=$(usb_wait_for_data_interface 3) || iface=''
+    fi
+    if [[ -z $iface ]]; then
+        ivm_warn 'the iPad is on the bus but exposes no network interface yet'
+        ivm_detail 'this takes a few seconds after the cable is plugged in'
+        ivm_detail 'if it stays like this, usbmuxd must request USB device mode 3'
+        ivm_detail 'see docs/dependencies.md'
+        return "$IVM_EXIT_OK"
     fi
     ivm_ok "data interface: $iface"
 
@@ -277,8 +287,11 @@ _net_status() {
     if [[ -n $cidr ]]; then
         ivm_ok "$iface has $cidr (network $(net_ipv4_network "$iface"))"
     else
-        ivm_fail "$iface has no IPv4 address"
-        ivm_detail 'a shared connection gives it 10.42.0.1/24 automatically'
+        # NetworkManager activates the profile asynchronously, so a missing
+        # address right after plugging in is still a wait.
+        ivm_warn "$iface has no IPv4 address yet"
+        ivm_detail 'a shared connection gives it 10.42.0.1/24 by itself'
+        ivm_detail 'if it persists, run: ivm net up'
     fi
 
     local peer rtt
@@ -335,6 +348,10 @@ _net_status() {
     ivm_section 'DHCP'
     if net_dhcp_listening; then
         ivm_ok 'a DHCP server is listening on UDP/67'
+    elif [[ -z $cidr ]]; then
+        # No address and no server: the connection is still being activated.
+        ivm_warn 'no DHCP server is listening yet'
+        ivm_detail 'the shared connection starts one when it activates'
     else
         ivm_fail 'nothing is listening on UDP/67'
         ivm_detail 'a shared connection runs its own server; check it with: ivm net up'
@@ -373,6 +390,10 @@ _net_status() {
     if ((IVM_COUNT_FAIL)); then
         printf 'The network cannot work in this state; run: ivm net up\n'
         return "$IVM_EXIT_PROBLEMS"
+    fi
+    if [[ -z $cidr ]]; then
+        printf 'Still coming up. Check again in a moment.\n'
+        return "$IVM_EXIT_OK"
     fi
     printf 'The network is ready. Connect from Moonlight to %s.\n' "$(net_ipv4_addr "$iface")"
     return "$IVM_EXIT_OK"
@@ -482,6 +503,13 @@ IVM_NET_DECLINED=0
 
     local iface
     iface=$(usb_data_interface)
+    if [[ -z $iface ]]; then
+        # Just plugged in: usbmuxd is switching the device and the kernel has not
+        # created the interface yet. Waiting is the correct answer, not failing.
+        printf '  %swait%s the cable was just connected; waiting up to %ss for the interface\n' \
+            "$IVM_C_DIM" "$IVM_C_RESET" "$IVM_NET_WAIT"
+        iface=$(usb_wait_for_data_interface "$IVM_NET_WAIT") || iface=''
+    fi
     if [[ -z $iface ]]; then
         ivm_fail 'the iPad exposes no network interface'
         ivm_detail 'usbmuxd must request USB device mode 3; see docs/dependencies.md'

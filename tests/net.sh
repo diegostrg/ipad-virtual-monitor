@@ -273,5 +273,38 @@ IVM_NET_STEPS=0
 capture _net_plan_down usb0
 check 'nothing bound to the interface needs nothing' '' "$output"
 
+# --- waiting for the interface after the cable appears --------------------
+
+# Not a real sleep: the wait is bounded by the clock, and the tests should not
+# take ten seconds to prove it.
+sleep() { :; }
+
+# A file counts the calls: the probe runs inside a command substitution, so a
+# shell variable would be incremented in a subshell and never come back.
+calls=$tmpdir/calls
+: >"$calls"
+usb_data_interface() {
+    printf 'call\n' >>"$calls"
+    return 0
+}
+status=0
+usb_wait_for_data_interface 1 >/dev/null 2>&1 || status=$?
+check 'an interface that never appears times out' 1 "$status"
+check 'it polls four times a second' 5 "$(wc -l <"$calls" | tr -d ' ')"
+
+: >"$calls"
+usb_data_interface() {
+    printf 'call\n' >>"$calls"
+    if (($(wc -l <"$calls") >= 3)); then
+        printf 'usb0'
+    fi
+    return 0
+}
+check 'an interface that appears is returned' 'usb0' "$(usb_wait_for_data_interface 1)"
+check 'it stops polling once it has one' 3 "$(wc -l <"$calls" | tr -d ' ')"
+
+usb_data_interface() { return 0; }
+check 'a nonsense timeout still terminates' 1 "$(status_of usb_wait_for_data_interface notanumber)"
+
 printf '\n%d checks, %d failures\n' "$checks" "$failures"
 ((failures == 0))

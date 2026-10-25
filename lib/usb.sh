@@ -68,6 +68,32 @@ usb_data_interface() {
     usb_net_interfaces | awk 'NR == 1 { print }'
 }
 
+# Wait for the data interface to exist, and print its name.
+#
+# Several things happen in sequence after the cable is plugged in: usbmuxd
+# switches the USB configuration, the kernel re-enumerates the device with the
+# new interfaces, and NetworkManager only then has something to activate. For a
+# few seconds the iPad is on the bus with no `usbN` at all, which is a wait and
+# not a fault — reporting it as a fault teaches the user to distrust the tool.
+#
+# Polls four times a second and gives up after the timeout, so a usbmuxd that
+# never switches is still reported promptly.
+usb_wait_for_data_interface() {
+    local timeout=${1:-10} attempt=0 rounds iface
+    [[ $timeout =~ ^[0-9]+$ ]] || timeout=10
+    rounds=$((timeout * 4))
+    while :; do
+        iface=$(usb_data_interface)
+        if [[ -n $iface ]]; then
+            printf '%s' "$iface"
+            return 0
+        fi
+        ((attempt < rounds)) || return 1
+        attempt=$((attempt + 1))
+        sleep 0.25
+    done
+}
+
 # Every Apple interface except the data one.
 usb_private_interfaces() {
     local data iface

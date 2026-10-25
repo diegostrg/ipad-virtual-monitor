@@ -14,6 +14,7 @@ layer 4, so never start with Sunshine.
 | Symptom | Most likely layer | First check |
 |---------|-------------------|-------------|
 | No `usbX` interface appears | 1 — USB link | `lsusb`, `journalctl -u usbmuxd` |
+| Just plugged in: iPad on the bus, no `usbN` yet | 1 — enumeration | wait a few seconds |
 | Interface exists, iPad has no IP | 2 — DHCP/firewall | `ivm net status`, UFW UDP/67 |
 | Works until the iPad reconnects, then it never gets an address | 2 — firewall destination | the DHCP rule must not name an address |
 | Ping fails | 2 — addressing | `ip neigh show dev usb0` |
