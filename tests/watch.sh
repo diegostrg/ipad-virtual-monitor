@@ -17,8 +17,30 @@ for _module in common config platform hyprland sunshine display watch; do
 done
 unset _module
 
+tmpdir=$(mktemp -d) || exit 1
+trap 'rm -rf -- "$tmpdir"' EXIT
+mkdir -p "$tmpdir/bin"
+
+# Notifications must never reach the real session bus during a test, and the
+# stub is also how the test sees what would have been said.
+cat >"$tmpdir/bin/notify-send" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$NOTIFY_LOG"
+exit "${NOTIFY_RC:-0}"
+STUB
+chmod +x "$tmpdir/bin/notify-send"
+export NOTIFY_LOG=$tmpdir/notify.log
+export NOTIFY_RC=0
+PATH=$tmpdir/bin:$PATH
+
 failures=0
 checks=0
+
+count_notices() {
+    local n
+    n=$(grep -c -- "$1" "$NOTIFY_LOG" 2>/dev/null) || n=0
+    printf '%s' "$n"
+}
 
 check() {
     local what=$1 expected=$2 actual=$3
@@ -69,6 +91,9 @@ reset() {
     _IVM_WATCH_WARNED_MISSING=0
     _IVM_WATCH_WAITING=0
     _IVM_WATCH_REARM_PENDING=0
+    IVM_NOTIFY=yes
+    NOTIFY_RC=0
+    : >"$NOTIFY_LOG"
     # Per test, so a stub replaced by one case cannot leak into the next.
     hypr_env_discover() { return 0; }
     _display_remove() { removals=$((removals + 1)); output_present=0; return 0; }
@@ -146,6 +171,33 @@ check 'the output goes before the restart' 0 "$output_present"
 check 'and Sunshine is restarted once' 1 "$restarts"
 check 'leaving no rearm pending' 0 "$_IVM_WATCH_REARM_PENDING"
 
+# --- the user is told before Sunshine goes away ---------------------------
+
+reset
+output_present=1
+_watch_reconcile 0 >/dev/null
+check 'the restart is announced' 1 "$(count_notices 'Restarting Sunshine')"
+check 'with the wait spelled out' 1 "$(count_notices 'Wait a few seconds')"
+
+reset
+output_present=1
+session_running=1
+_watch_reconcile 0 >/dev/null
+check 'a running stream is not announced' 0 "$(count_notices 'Restarting Sunshine')"
+
+reset
+output_present=1
+IVM_NOTIFY=no
+_watch_reconcile 0 >/dev/null
+check 'NOTIFY=no silences it' 0 "$(count_notices 'Restarting Sunshine')"
+
+reset
+output_present=1
+export NOTIFY_RC=1
+_watch_reconcile 0 >/dev/null
+check 'a notification that fails is not fatal' 0 "$output_present"
+check 'and the restart still happens' 1 "$restarts"
+
 # --- a restart that fails is retried on the next tick ---------------------
 
 reset
@@ -153,12 +205,14 @@ output_present=1
 restart_result=1
 _watch_reconcile 0 >/dev/null
 check 'a failed restart leaves the rearm pending' 1 "$_IVM_WATCH_REARM_PENDING"
+check 'and it is announced once' 1 "$(count_notices 'Restarting Sunshine')"
 check 'the output is removed anyway' 0 "$output_present"
 
 fake_now=5000
 restart_result=0
 _watch_reconcile 20 >/dev/null
 check 'the next tick retries the restart' 2 "$restarts"
+check 'without announcing it again' 1 "$(count_notices 'Restarting Sunshine')"
 check 'and clears the pending flag' 0 "$_IVM_WATCH_REARM_PENDING"
 
 # --- a client that returns while the rearm is pending is not disturbed ----

@@ -17,9 +17,11 @@ IVM_FPS=${IVM_FPS:-60}
 IVM_SCALE=${IVM_SCALE:-1.0}
 IVM_FOLLOW_CLIENT=${IVM_FOLLOW_CLIENT:-yes}
 IVM_GRACE=${IVM_GRACE:-20}
+# Desktop notifications, used by the supervisor before it restarts Sunshine.
+IVM_NOTIFY=${IVM_NOTIFY:-yes}
 
 # Only these keys are accepted from the file.
-_ivm_config_keys='OUTPUT_NAME SIDE WIDTH HEIGHT FPS SCALE FOLLOW_CLIENT GRACE'
+_ivm_config_keys='OUTPUT_NAME SIDE WIDTH HEIGHT FPS SCALE FOLLOW_CLIENT GRACE NOTIFY'
 
 # Load the config file, if it exists. Unknown keys are ignored, malformed values
 # are refused with a message naming the key.
@@ -52,6 +54,7 @@ ivm_config_load() {
             SCALE) IVM_SCALE=$value ;;
             FOLLOW_CLIENT) IVM_FOLLOW_CLIENT=$value ;;
             GRACE) IVM_GRACE=$value ;;
+            NOTIFY) IVM_NOTIFY=$value ;;
         esac
     done <"$IVM_CONFIG_FILE"
 
@@ -104,6 +107,13 @@ ivm_config_validate() {
         ivm_error "config: GRACE must be a number of seconds up to 600, got '$IVM_GRACE'"
         status=$IVM_EXIT_PROBLEMS
     fi
+    case $IVM_NOTIFY in
+        yes|no) ;;
+        *)
+            ivm_error "config: NOTIFY must be yes or no, got '$IVM_NOTIFY'"
+            status=$IVM_EXIT_PROBLEMS
+            ;;
+    esac
 
     return "$status"
 }

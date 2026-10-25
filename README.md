@@ -29,6 +29,53 @@ Moonlight's statistics, on that same session:
 path: the frame never leaves the cable. The host side is the time Sunshine needs
 to grab, encode and send each frame.
 
+## How it works
+
+Four layers, each one useless without the next:
+
+1. **USB link** — Apple devices expose a CDC-NCM network interface only in the
+   right USB device mode. `usbmuxd` requests that mode.
+2. **Network** — NetworkManager turns the USB interface into a shared network
+   and hands the iPad an address over DHCP. The firewall must allow it.
+3. **Display** — the compositor creates a virtual output that behaves like a
+   real second monitor.
+4. **Stream** — Sunshine captures that output and serves it to Moonlight over
+   the USB network.
+
+The details of each layer live in [docs/](docs/).
+
+## Requirements
+
+| Component | Notes |
+|-----------|-------|
+| Linux with systemd | Tested on CachyOS (Arch-based) |
+| `git` | The installer downloads the tool and, if needed, the USB stack with it |
+| Wayland compositor | Hyprland is the first supported target |
+| NetworkManager | Used to share the USB interface |
+| `usbmuxd` with NCM support | Distro packages cannot switch the USB mode; `ivm deps` detects it and can build the stack |
+| Sunshine | Host-side streaming server |
+| Moonlight | iPad app, from the App Store |
+| USB-C cable | Must support data, not just power |
+| Optional: UFW | Only configured when it is active |
+
+## Documentation
+
+- [Architecture](docs/architecture.md) — how the pieces fit together
+- [Dependencies](docs/dependencies.md) — why the distro package is not enough
+- [USB network](docs/usb-network.md) — from cable to DHCP lease
+- [Video pipeline](docs/video-pipeline.md) — virtual output and capture
+- [Hyprland setup](docs/hyprland-setup.md) — what to add to your dotfiles
+- [Troubleshooting](docs/troubleshooting.md) — symptom → cause → fix
+- [Roadmap](docs/roadmap.md) — what is done and what comes next
+
+## Credits
+
+The USB networking approach is inspired by
+[hkfuertes/virtual-screen](https://github.com/hkfuertes/virtual-screen), which
+documents the `usbmuxd` device mode and the NetworkManager shared connection.
+That guide targets X11; this project adapts the idea to Wayland.
+
+
 ## Status
 
 **Early development.** The repository is being built phase by phase; see
@@ -328,9 +375,20 @@ skips the prep on the next connection, finds no `MOONLIGHT`, and quietly streams
 a clone of the laptop panel instead.
 
 So when the supervisor removes the output, it also restarts Sunshine. With
-nobody connected that costs a couple of seconds and arms the hook for the next
-connection. `ivm status` and `ivm doctor` call out the clone explicitly if it
-ever happens, because the stream itself looks perfectly healthy.
+nobody connected that costs a few seconds and arms the hook for the next
+connection. Because that happens in the background, it sends a desktop
+notification first:
+
+```text
+Restarting Sunshine — Wait a few seconds before reconnecting from Moonlight.
+```
+
+It uses `notify-send`, and it stays quiet if the tool or the notification daemon
+is missing: this is a courtesy, not a dependency. `NOTIFY=no` in the config turns
+it off.
+
+`ivm status` and `ivm doctor` call out the clone explicitly if it ever happens,
+because the stream itself looks perfectly healthy.
 
 ### Configuration
 
@@ -345,6 +403,7 @@ FPS=60
 SCALE=1.0               # layout scale, 0.5 to 4; must divide the size exactly
 FOLLOW_CLIENT=yes       # prefer the size and rate Moonlight requests
 GRACE=20                # seconds to wait before removing the output
+NOTIFY=yes              # desktop notification before Sunshine is restarted
 ```
 
 Values are validated and the file is parsed, never sourced.
@@ -384,61 +443,6 @@ ivm completion fish > ~/.config/fish/completions/ivm.fish
 For the current session only, after `compinit` has run:
 `eval "$(ivm completion zsh)"`, or `eval "$(ivm completion bash)"` in bash.
 
-## Why another guide?
-
-Most existing guides assume X11 and force an HDMI connector through `xrandr`,
-or they ask you to compile the entire libimobiledevice stack by hand and follow
-a dozen manual steps.
-
-This project targets modern Wayland desktops first (Hyprland) and aims to turn
-that manual procedure into one idempotent, inspectable command that you can run,
-audit and undo.
-
-## How it works
-
-Four layers, each one useless without the next:
-
-1. **USB link** — Apple devices expose a CDC-NCM network interface only in the
-   right USB device mode. `usbmuxd` requests that mode.
-2. **Network** — NetworkManager turns the USB interface into a shared network
-   and hands the iPad an address over DHCP. The firewall must allow it.
-3. **Display** — the compositor creates a virtual output that behaves like a
-   real second monitor.
-4. **Stream** — Sunshine captures that output and serves it to Moonlight over
-   the USB network.
-
-The details of each layer live in [docs/](docs/).
-
-## Requirements
-
-| Component | Notes |
-|-----------|-------|
-| Linux with systemd | Tested on CachyOS (Arch-based) |
-| `git` | The installer downloads the tool and, if needed, the USB stack with it |
-| Wayland compositor | Hyprland is the first supported target |
-| NetworkManager | Used to share the USB interface |
-| `usbmuxd` with NCM support | Distro packages cannot switch the USB mode; `ivm deps` detects it and can build the stack |
-| Sunshine | Host-side streaming server |
-| Moonlight | iPad app, from the App Store |
-| USB-C cable | Must support data, not just power |
-| Optional: UFW | Only configured when it is active |
-
-## Documentation
-
-- [Architecture](docs/architecture.md) — how the pieces fit together
-- [Dependencies](docs/dependencies.md) — why the distro package is not enough
-- [USB network](docs/usb-network.md) — from cable to DHCP lease
-- [Video pipeline](docs/video-pipeline.md) — virtual output and capture
-- [Hyprland setup](docs/hyprland-setup.md) — what to add to your dotfiles
-- [Troubleshooting](docs/troubleshooting.md) — symptom → cause → fix
-- [Roadmap](docs/roadmap.md) — what is done and what comes next
-
-## Credits
-
-The USB networking approach is inspired by
-[hkfuertes/virtual-screen](https://github.com/hkfuertes/virtual-screen), which
-documents the `usbmuxd` device mode and the NetworkManager shared connection.
-That guide targets X11; this project adapts the idea to Wayland.
 
 ## License
 

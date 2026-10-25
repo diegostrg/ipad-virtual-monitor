@@ -192,6 +192,12 @@ _watch_remove() {
 }
 
 _watch_rearm() {
+    # On the first attempt only: a retry every two seconds would fill the
+    # notification list with the same sentence.
+    if ((!_IVM_WATCH_REARM_PENDING)); then
+        ivm_notify 'Restarting Sunshine' \
+            'Wait a few seconds before reconnecting from Moonlight.'
+    fi
     if sunshine_rearm; then
         _IVM_WATCH_REARM_PENDING=0
         _watch_say 'Sunshine restarted, so the next connection builds it again'

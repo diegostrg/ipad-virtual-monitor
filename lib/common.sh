@@ -76,6 +76,27 @@ have() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# A desktop notification, for what the supervisor does while nobody is looking
+# at a terminal: it restarts Sunshine behind the user's back and the next
+# connection would otherwise land during the restart.
+#
+# A notification is a courtesy, never a dependency: without the tool, the daemon
+# or the permission, this does nothing at all. The timeout matters because a
+# wedged session bus would otherwise hang the supervisor's loop.
+ivm_notify() {
+    local title=$1 body=$2
+    [[ ${IVM_NOTIFY:-yes} == yes ]] || return 0
+    have notify-send || return 0
+    if have timeout; then
+        timeout 3 notify-send --app-name=ivm --urgency=normal --expire-time=5000 \
+            "$title" "$body" >/dev/null 2>&1 || true
+    else
+        notify-send --app-name=ivm --urgency=normal --expire-time=5000 \
+            "$title" "$body" >/dev/null 2>&1 || true
+    fi
+    return 0
+}
+
 # Directory for logs and other runtime files. Created on demand, because a
 # read-only command must not create anything.
 #
