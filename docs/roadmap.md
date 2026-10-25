@@ -67,18 +67,19 @@ before the previous phase is verified on real hardware.
 
 ## Phase 4 — Orchestration
 
-- [ ] `ivm up` / `ivm down` / `ivm status`
-- [ ] Ensure Sunshine is running: it can die at boot before the compositor is up
+- [x] `ivm up` / `ivm down` / `ivm status`
+- [x] Ensure Sunshine is running: it can die at boot before the compositor is up
       and `Restart=on-failure` does not bring it back
-- [ ] Configure Sunshine hooks with a backup, without touching credentials
-- [x] `ivm watch`: supervisor that removes the output when the stream ends
+- [x] Configure Sunshine hooks with a backup, without touching credentials
+- [x] Install, enable and start the supervisor as a systemd user unit
+- [x] Human-readable status table
+- [x] Refuse to run as root
 - [x] Session detection from Sunshine's `/proc/<pid>/task/*/comm` threads
 - [x] Grace period before removing the output (default 20 s, configurable)
 - [x] Warn when a stream runs but the output is missing, without guessing
 - [x] Bash tests for the supervisor's decision logic (`tests/watch.sh`)
-- [ ] Ship and install the systemd user unit
-      (`share/systemd/ivm-watch.service` exists, no installer yet)
-- [ ] Human-readable status table
+- [x] Bash tests for the Sunshine configuration writer
+      (`tests/sunshine-conf.sh`)
 - [ ] Shell completions (bash, zsh, fish)
 
 ## Phase 5 — Hardening and release

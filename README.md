@@ -21,19 +21,57 @@ network between the two devices.
 **Early development.** The repository is being built phase by phase; see
 [docs/roadmap.md](docs/roadmap.md).
 
-- `ivm doctor` — read-only, no root, walks all four layers.
-- `ivm display` — create, remove and inspect the virtual output.
+- `ivm up` — prepares the host: starts Sunshine, points its prep hook at the
+  tool, installs and starts the supervisor.
+- `ivm status` — one short screen with the state of every layer.
+- `ivm down` — removes the output and stops the supervisor.
+- `ivm doctor` — read-only, no root, walks all four layers and explains failures.
+- `ivm display` — create, remove and inspect the virtual output by hand.
 - `ivm watch` — removes the output when the stream ends.
-- `ivm up`, `ivm down` and `ivm status` are designed and documented, not
-  implemented.
 
 ## Usage
 
 ```bash
 git clone https://github.com/diegostrg/ipad-virtual-monitor
 cd ipad-virtual-monitor
-./bin/ivm doctor
+ln -s "$PWD/bin/ivm" ~/.local/bin/ivm    # so `ivm` is on your PATH
+ivm up                                    # prepare the host
 ```
+
+Then connect from Moonlight. `ivm status` shows where things stand at any
+moment, and `ivm doctor` walks every layer when something is wrong.
+
+```text
+ivm status 0.1.0-dev
+  host         CachyOS, hyprland 0.56.2
+  network      usb0 10.42.0.1/24, iPad at 10.42.0.42
+  sunshine     running, capturing with wlr
+  prep hook    [{"do":"/home/you/ipad-virtual-monitor/bin/ivm display prep"}]
+  display      absent (created when a client connects)
+  supervisor   running
+
+Idle. Connect from Moonlight and the output appears on its own.
+```
+
+### What `ivm up` changes
+
+It is the only command that writes anything outside the compositor, and it says
+so line by line:
+
+- starts the Sunshine user service if it is not running;
+- sets `capture = wlr` and the `global_prep_cmd` hook in the Sunshine
+  configuration, keeping a timestamped backup next to it — credentials and
+  pairing data are never read or touched;
+- installs, enables and starts the supervisor's user unit.
+
+It never asks for root. Anything that needs it is printed as the command to run.
+`ivm down` undoes the runtime state (output removed, supervisor stopped) but
+leaves the configuration alone, so the next `ivm up` is instant.
+
+### Diagnosing
+
+When something is wrong, `ivm doctor` walks the four layers in dependency order
+and the first `fail` is the one to fix:
 
 ```text
 ivm doctor 0.1.0-dev
@@ -112,15 +150,23 @@ ivm watch                # foreground: removes MOONLIGHT 20 s after a disconnect
 ivm watch --once         # reconcile right now and exit
 ```
 
-Run it as a user service so it survives a terminal being closed:
+`ivm up` installs it as a user service, so it survives a closed terminal and
+starts with your session:
 
 ```bash
-mkdir -p ~/.config/systemd/user
-cp share/systemd/ivm-watch.service ~/.config/systemd/user/
-# edit ExecStart to point at this checkout, or symlink bin/ivm into ~/.local/bin
-systemctl --user daemon-reload
-systemctl --user enable --now ivm-watch
+systemctl --user status ivm-watch
+journalctl --user -u ivm-watch -f     # see the removals as they happen
 ```
+
+To keep it by hand instead:
+
+```bash
+cp share/systemd/ivm-watch.service ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now ivm-watch
+```
+
+The unit expects `ivm` on your `PATH`; adjust `ExecStart` if you prefer an
+absolute path.
 
 ### Configuration
 

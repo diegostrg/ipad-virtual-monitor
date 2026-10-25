@@ -168,18 +168,28 @@ not take the keyboard away from the laptop.
 The CLI is a thin orchestrator plus one small user service:
 
 ```text
-ivm up       = ensure network → ensure Sunshine configuration → print endpoint
-ivm status   = inspect each layer, report state
-ivm down     = remove the virtual output → optionally bring the network down
-ivm watch    = reconcile the output with Sunshine's session state (service)
+ivm up         = check the compositor → start Sunshine → point its prep hook at
+                 this tool → install and start the supervisor → report the address
+ivm status     = one short screen: host, network, Sunshine, output, supervisor
+ivm down       = stop the supervisor → remove the virtual output
+ivm doctor     = walk every layer and explain what is broken
+ivm display    = create, remove or inspect the output (and the Sunshine hook)
+ivm watch      = reconcile the output with Sunshine's session state (service)
 ```
 
 `watch` is the only long-running component. It runs as a systemd user unit, holds
 no privileges, and exits safely when the compositor is unreachable.
 
 State is derived from the system (`ip`, `nmcli`, `hyprctl`, `systemctl`, `/proc`)
-rather than stored. A small runtime file is used only for values that cannot be
-discovered, such as when the output was created, which the grace period needs.
+rather than stored: the grace period keeps its starting point in memory, and a
+restart of the supervisor only means the countdown starts again. Nothing about
+the output is remembered between runs, because the compositor already knows
+whether it exists.
+
+`ivm up` is the only command that writes anything outside the compositor, and it
+writes two things: a value in the Sunshine configuration (with a timestamped
+backup next to it) and the supervisor's user unit. Both are reported, and both
+are left in place by `ivm down`.
 
 ## Security notes
 

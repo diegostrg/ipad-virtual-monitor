@@ -107,3 +107,85 @@ sunshine_logged_monitor() {
     [[ -r $log ]] || return 1
     grep -a -q "Monitor [0-9]* is ${name}" "$log" 2>/dev/null
 }
+
+# ---------------------------------------------------------------------------
+# Changes to the Sunshine configuration
+# ---------------------------------------------------------------------------
+#
+# Sunshine keeps `key = value` lines in a single file and holds everything else
+# in its own state file, so only that file is touched here. Anything with a
+# credential or a pairing lives elsewhere and is never read or written.
+
+# Back up the configuration next to itself. Returns the path of the copy.
+sunshine_conf_backup() {
+    local file=$1 backup
+    backup="${file}.bak-ivm-$(date +%Y%m%d-%H%M%S)"
+    cp -a -- "$file" "$backup" || return 1
+    printf '%s' "$backup"
+}
+
+# Set a key, replacing every existing definition of it and keeping the rest of
+# the file untouched. Appends it when it is not there.
+#
+# Returns 0 when the file changed, 1 when it already had that value, and 2 when
+# the file cannot be written. The distinction matters: only a real change needs a
+# restart of Sunshine. On a change, the path of the backup is left in
+# IVM_SUNSHINE_BACKUP so the caller can tell the user where it is.
+sunshine_set_key() {
+    local key=$1 value=$2 file tmp current
+    file=$(sunshine_conf_path)
+
+    if [[ ! -r $file ]]; then
+        ivm_error "sunshine: cannot read ${file}"
+        ivm_error 'sunshine: run Sunshine once so that it writes its configuration'
+        return 2
+    fi
+
+    current=$(sunshine_conf_get "$key")
+    [[ $current == "$value" ]] && return 1
+
+    tmp=$(mktemp) || return 2
+    if ! awk -v k="$key" -v v="$value" '
+        BEGIN { line = k " = " v }
+        $0 ~ "^[[:space:]]*" k "[[:space:]]*=" {
+            if (!done) { print line; done = 1 }
+            next
+        }
+        { print }
+        END { if (!done) print line }
+    ' "$file" >"$tmp"; then
+        rm -f -- "$tmp"
+        return 2
+    fi
+
+    if ! cp -a -- "$file" "$tmp.keep" 2>/dev/null; then
+        rm -f -- "$tmp"
+        return 2
+    fi
+    # Keep the original permissions: the file is readable by the owner only.
+    chmod --reference="$tmp.keep" "$tmp" 2>/dev/null || true
+    rm -f -- "$tmp.keep"
+
+    IVM_SUNSHINE_BACKUP=$(sunshine_conf_backup "$file") || {
+        rm -f -- "$tmp"
+        return 2
+    }
+
+    mv -- "$tmp" "$file" || return 2
+    return 0
+}
+
+# Restart Sunshine and wait for it to come back. It can die at boot when it starts
+# before the compositor, so "started" is not the same as "running".
+sunshine_restart() {
+    local unit attempt=0
+    unit=$(sunshine_unit) || return 1
+    systemctl --user restart "$unit" 2>/dev/null || return 1
+
+    until sunshine_active; do
+        attempt=$((attempt + 1))
+        ((attempt < 20)) || return 1
+        sleep 0.5
+    done
+    return 0
+}
