@@ -63,6 +63,7 @@ The details of each layer live in [docs/](docs/).
 ## Documentation
 
 - [Architecture](docs/architecture.md) — how the pieces fit together
+- [Dependencies](docs/dependencies.md) — why the distro package is not enough
 - [USB network](docs/usb-network.md) — from cable to DHCP lease
 - [Video pipeline](docs/video-pipeline.md) — virtual output and capture
 - [Hyprland setup](docs/hyprland-setup.md) — what to add to your dotfiles

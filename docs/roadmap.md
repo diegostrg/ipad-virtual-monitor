@@ -8,6 +8,7 @@ before the previous phase is verified on real hardware.
 - [x] Local git repository
 - [x] README, license, documentation structure
 - [x] Architecture, USB network, video pipeline and troubleshooting documents
+- [x] Dependency documentation: why the distro `usbmuxd` cannot switch modes
 - [ ] Repository published on GitHub (deferred until the tool works)
 
 ## Phase 1 — Diagnosis
@@ -15,6 +16,7 @@ before the previous phase is verified on real hardware.
 - [ ] `ivm doctor`: read-only, walks all four layers
 - [ ] Detect distro, compositor, config dialect, Sunshine, NetworkManager, UFW
 - [ ] Detect `usbmuxd` build and whether it supports device mode 3
+- [ ] Detect support by inspecting the binary, not by guessing from a version
 - [ ] Report the first broken layer with a suggested fix
 - [ ] `--report`: sanitized output for bug reports
 - [ ] Exit codes suitable for scripting

@@ -17,9 +17,11 @@ must be requested by the host through `usbmuxd`.
 configuration the device should switch to. Mode `3` enables CDC-NCM, the
 standard USB Ethernet protocol Apple uses for tethering.
 
-Most distribution packages predate this option or do not enable it, so the
-daemon must be built from upstream and started with the variable set. Once the
-mode is active, the kernel binds `cdc_ncm` and creates the interfaces.
+Most distribution packages predate this option, so the daemon must be built from
+upstream and started with the variable set. The exact reason, the full stack and
+the verification commands are in [dependencies.md](dependencies.md).
+
+Once the mode is active, the kernel binds `cdc_ncm` and creates the interfaces.
 
 Verify the mode was applied:
 

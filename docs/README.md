@@ -3,6 +3,7 @@
 | Document | What it answers |
 |----------|-----------------|
 | [architecture.md](architecture.md) | How the four layers fit together and why the design looks like this |
+| [dependencies.md](dependencies.md) | Why the stock `usbmuxd` cannot do this, and what has to be built |
 | [usb-network.md](usb-network.md) | Why the iPad needs a USB device mode, and how it gets an IP address |
 | [video-pipeline.md](video-pipeline.md) | How the virtual output is created, captured and encoded |
 | [hyprland-setup.md](hyprland-setup.md) | What to add to your Hyprland configuration (not managed by this repo) |
