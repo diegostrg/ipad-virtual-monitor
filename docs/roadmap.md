@@ -14,6 +14,10 @@ before the previous phase is verified on real hardware.
       extended desktop, input and audio
 - [x] On-demand creation verified: the output is created by the prep command
       while Sunshine is already running, and the stream lands on it
+- [x] Clean-boot verification: after removing `vkms`, a reboot, and a single
+      connection from the iPad, the whole path worked with no manual steps
+- [x] Client-provided size and refresh rate verified
+      (`SUNSHINE_CLIENT_WIDTH/HEIGHT/FPS`)
 - [ ] Repository published on GitHub (deferred until the tool works)
 
 ## Phase 1 — Diagnosis
