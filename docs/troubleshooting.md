@@ -207,10 +207,20 @@ whole pixels:
 | 1920×1334 | 1.6 | 1200 × 833.75 | 2 |
 | 1920×1334 | 1.5 | 1280 × 889.33 | 2 |
 
+`ivm` refuses to hand over such a scale: it checks the division first, warns,
+and applies `1.0` instead. The same check is behind `ivm status`'s note when the
+configured scale could not be applied to the mode a client asked for.
+
 Check what the compositor really applied instead of trusting the request:
 
 ```bash
 hyprctl monitors | sed -n '/MOONLIGHT/,/^$/p' | grep scale
+```
+
+The scale in force is also part of `ivm status`:
+
+```text
+  display      2360x1640@60.00000 at 1920x0, scale 1.6
 ```
 
 ### Overlapping virtual monitors

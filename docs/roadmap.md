@@ -63,11 +63,13 @@ commands those reports suggest.
 - [x] Snapshot and restore the focused monitor and the active window
 - [x] Reconcile with existing monitor rules (`hl.monitor` replaces them)
 - [x] Verify that Sunshine passes the client's dimensions to prep commands
-- [x] Layout math uses logical pixels, so a scaled monitor is measured correctly
 - [x] `--dry-run`: print the plan without touching the compositor
 - [ ] Verify the legacy (non-Lua) Hyprland path on a real machine: the rule is
       written, but the focus snapshot has no equivalent there
-- [ ] Honor a per-output scale from the config; 1.0 is hardcoded for now
+- [x] Configurable scale (`SCALE`, `--scale`), validated against the mode
+      because the compositor rounds instead of refusing
+- [x] Layout math uses logical pixels throughout: a scaled monitor is measured
+      correctly and `left` / `above` stay adjacent at any scale
 
 ## Phase 4 — Orchestration
 

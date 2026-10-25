@@ -112,8 +112,14 @@ Notes that cost time to discover:
   | 1920×1334 | 1.5 | 1280 × 889.33 | 2 |
 
   That is why a scale that looks reasonable with one mode is ignored with
-  another: `1640 / 1.6` is exact and `1334 / 1.6` is not. A tool that offers a
-  scale must check the arithmetic against the mode it is about to apply.
+  another: `1640 / 1.6` is exact and `1334 / 1.6` is not. `ivm` therefore tests
+  the arithmetic against the mode it is about to apply, with integer maths, and
+  falls back to `1.0` with a message instead of handing over a scale the
+  compositor will round.
+- **The scale belongs to the mode, not to the output.** `MOONLIGHT` is destroyed
+  when the stream ends and recreated from the configuration on the next
+  connection, so a scale set once is reapplied every time — as long as the mode
+  requested by the client still divides by it.
 - **Positions are in layout pixels, not physical ones.** The layout is the
   desktop after dividing by the scale, so a 2360 px wide output at scale 1.6
   occupies 1475 px of layout. Placing it with the physical width leaves a gap

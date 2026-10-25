@@ -108,10 +108,22 @@ _status_display() {
         return 0
     fi
 
-    local note=''
+    local note='' applied
     case $(display_adjacency) in
         gap) note=', not touching another output' ;;
     esac
+    # Only the case where the request was ignored is worth a line: a configured
+    # scale that cannot divide this mode was silently dropped, and the user would
+    # otherwise see their setting vanish without explanation.
+    applied=$(display_scale)
+    if [[ $applied != "$IVM_SCALE" ]]; then
+        local geom
+        geom=$(hypr_monitor_field "$(display_name)" 3)
+        geom=${geom%@*}
+        if ! display_scale_is_exact "${geom%x*}" "${geom#*x}" "$IVM_SCALE"; then
+            note="$note, the configured $IVM_SCALE cannot be applied to this size"
+        fi
+    fi
     _status_row 'display' "$(display_geometry), scale $(display_scale)$note"
 }
 

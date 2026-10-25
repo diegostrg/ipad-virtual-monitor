@@ -128,6 +128,7 @@ ivm display status                 # what exists, and what would be created
 ivm display create --dry-run       # print the plan, change nothing
 ivm display create                 # create it at the size the client asked for
 ivm display create --side left --width 1920 --height 1334
+ivm display create --width 2360 --height 1640 --scale 1.6
 ivm display remove
 ```
 
@@ -136,6 +137,14 @@ Sunshine (`SUNSHINE_CLIENT_WIDTH/HEIGHT/FPS`), then the configuration file.
 Positions are computed from your real layout so the new screen always touches an
 existing one — a gap or an overlap looks like a working stream until the pointer
 has to cross it.
+
+The scale has one constraint that is easy to miss: Hyprland divides the mode by
+it to get the layout size and needs whole pixels, so a scale that does not
+divide both dimensions exactly is applied as an integer instead. `2360×1640` at
+`1.6` is `1475×1025` and works; `1920×1334` at `1.6` is `833.75` and would become
+`2`. `ivm` checks this before touching the compositor and falls back to `1.0`
+with a message rather than let the layout drift, which means a scale is worth
+pairing with the mode it divides.
 
 Creating the output takes the focus away from what you were doing, so the tool
 snapshots the focused monitor and the active window and puts them back.
@@ -178,11 +187,25 @@ SIDE=right              # right, left, above or below the laptop panel
 WIDTH=1920              # fallback size when the client does not ask for one
 HEIGHT=1334
 FPS=60
+SCALE=1.0               # layout scale, 0.5 to 4; must divide the size exactly
 FOLLOW_CLIENT=yes       # prefer the size and rate Moonlight requests
 GRACE=20                # seconds to wait before removing the output
 ```
 
 Values are validated and the file is parsed, never sourced.
+
+The scale works best paired with the size it divides. For the 11-inch iPad and a
+1.6 scale, the native frame is the one that fits:
+
+```ini
+WIDTH=2360
+HEIGHT=1640
+SCALE=1.6
+```
+
+With `FOLLOW_CLIENT=yes`, Moonlight's own resolution setting still wins, so
+choosing *PC/Game resolution* there (`1920×1334`) drops the scale back to `1.0`
+and says so. Choose *Full / Safe Area* to get the mode that carries `1.6`.
 
 ## Why another guide?
 

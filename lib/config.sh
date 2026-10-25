@@ -11,11 +11,15 @@ IVM_SIDE=${IVM_SIDE:-right}
 IVM_WIDTH=${IVM_WIDTH:-1920}
 IVM_HEIGHT=${IVM_HEIGHT:-1334}
 IVM_FPS=${IVM_FPS:-60}
+# The scale is what makes the iPad readable: a 2360 px frame at 1.6 gives the same
+# apparent density as the laptop panel. It is not free to choose, though; see
+# display_scale_is_exact.
+IVM_SCALE=${IVM_SCALE:-1.0}
 IVM_FOLLOW_CLIENT=${IVM_FOLLOW_CLIENT:-yes}
 IVM_GRACE=${IVM_GRACE:-20}
 
 # Only these keys are accepted from the file.
-_ivm_config_keys='OUTPUT_NAME SIDE WIDTH HEIGHT FPS FOLLOW_CLIENT GRACE'
+_ivm_config_keys='OUTPUT_NAME SIDE WIDTH HEIGHT FPS SCALE FOLLOW_CLIENT GRACE'
 
 # Load the config file, if it exists. Unknown keys are ignored, malformed values
 # are refused with a message naming the key.
@@ -45,6 +49,7 @@ ivm_config_load() {
             WIDTH) IVM_WIDTH=$value ;;
             HEIGHT) IVM_HEIGHT=$value ;;
             FPS) IVM_FPS=$value ;;
+            SCALE) IVM_SCALE=$value ;;
             FOLLOW_CLIENT) IVM_FOLLOW_CLIENT=$value ;;
             GRACE) IVM_GRACE=$value ;;
         esac
@@ -79,6 +84,13 @@ ivm_config_validate() {
     fi
     if [[ ! $IVM_FPS =~ ^[0-9]+$ ]] || ((IVM_FPS < 24 || IVM_FPS > 240)); then
         ivm_error "config: FPS must be between 24 and 240, got '$IVM_FPS'"
+        status=$IVM_EXIT_PROBLEMS
+    fi
+    # Only the shape is checked here. Whether this scale divides the size into
+    # whole logical pixels depends on the mode, which may still come from the
+    # client, so that test belongs where the mode is known.
+    if ! awk -v s="$IVM_SCALE" 'BEGIN { exit !(s ~ /^[0-9]+(\.[0-9]+)?$/ && s + 0 >= 0.5 && s + 0 <= 4) }'; then
+        ivm_error "config: SCALE must be a number between 0.5 and 4, got '$IVM_SCALE'"
         status=$IVM_EXIT_PROBLEMS
     fi
     case $IVM_FOLLOW_CLIENT in

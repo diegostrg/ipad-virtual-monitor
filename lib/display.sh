@@ -77,11 +77,16 @@ display_other_box() {
 
 # Where the output should sit for a size and a side, as `x y`.
 #
+# The size is physical and the layout is logical, so it is divided by the scale
+# before it is used: a 2360 px wide output at scale 1.6 occupies 1475 layout px.
+# Measuring with physical pixels would report a gap where there is none and, on
+# `left` or `above`, would leave one the cursor cannot cross.
+#
 # Each side is glued to the bounding box of the rest of the desktop, so the new
 # screen always touches a real one. Overlaps and gaps look like a working stream
 # until the pointer has to cross them.
 display_position() {
-    local width=$1 height=$2 side=${3:-$IVM_SIDE}
+    local width=$1 height=$2 side=${3:-$IVM_SIDE} scale=${4:-1}
     local box
 
     box=$(display_other_box)
@@ -92,23 +97,29 @@ display_position() {
         return 0
     fi
 
+    # Rounding matches what the compositor does for the other outputs, and the
+    # scale has already been checked to divide the mode exactly.
+    local w h
+    read -r w h <<<"$(awk -v w="$width" -v h="$height" -v s="$scale" \
+        'BEGIN { printf "%d %d", int(w / s + 0.5), int(h / s + 0.5) }')"
+
     local min_x min_y max_x max_y
     read -r min_x min_y max_x max_y <<<"$box"
     case $side in
-        left) printf '%s %s' "$((min_x - width))" "$min_y" ;;
-        above) printf '%s %s' "$min_x" "$((min_y - height))" ;;
+        left) printf '%s %s' "$((min_x - w))" "$min_y" ;;
+        above) printf '%s %s' "$min_x" "$((min_y - h))" ;;
         below) printf '%s %s' "$min_x" "$max_y" ;;
         *) printf '%s %s' "$max_x" "$min_y" ;;
     esac
 }
 
-# True when the output is currently at the requested mode and position.
+# True when the output is currently at the requested mode, position and scale.
 #
 # Hyprland accepts a rule silently even when it cannot apply it, so the state has
 # to be read back. The rate is compared without decimals because Hyprland prints
-# 60 as 60.00000.
+# 60 as 60.00000, and the scale numerically because it prints 1 for 1.0.
 display_matches() {
-    local width=$1 height=$2 fps=$3 x=$4 y=$5 geom pos rate
+    local width=$1 height=$2 fps=$3 x=$4 y=$5 scale=${6:-1} geom pos rate actual
     geom=$(hypr_monitor_field "$(display_name)" 3)
     pos=$(hypr_monitor_field "$(display_name)" 4)
     [[ -n $geom && -n $pos ]] || return 1
@@ -116,7 +127,16 @@ display_matches() {
     [[ $pos == "${x}x${y}" ]] || return 1
     rate=${geom##*@}
     rate=${rate%%.*}
-    [[ $rate == "$fps" ]]
+    [[ $rate == "$fps" ]] || return 1
+    actual=$(display_scale)
+    awk -v a="$actual" -v b="$scale" 'BEGIN { exit !(a - b < 0.001 && b - a < 0.001) }'
+}
+
+# Size of the output in layout pixels, as `widthxheight`.
+display_layout_size() {
+    local width=$1 height=$2 scale=${3:-1}
+    awk -v w="$width" -v h="$height" -v s="$scale" \
+        'BEGIN { printf "%dx%d", int(w / s + 0.5), int(h / s + 0.5) }'
 }
 
 # Detects the layout mistake that breaks input: a monitor that does not touch any
@@ -196,6 +216,56 @@ display_is_side() {
     esac
 }
 
+display_is_scale() {
+    awk -v s="$1" 'BEGIN { exit !(s ~ /^[0-9]+(\.[0-9]+)?$/ && s + 0 >= 0.5 && s + 0 <= 4) }'
+}
+
+# True when the scale divides the mode into whole logical pixels.
+#
+# Hyprland gets the layout size by dividing the mode by the scale, and a
+# fractional result is not usable, so it quietly falls back to an integer scale
+# instead of refusing the rule. 2360x1640 at 1.6 is exact (1475x1025);
+# 1920x1334 at 1.6 is 833.75, and the compositor applies 2 without a word.
+#
+# The test uses integers, because 1920/1.6 in binary floating point is not
+# reliably 1200: the scale becomes a fraction and the comparison is a remainder.
+display_scale_is_exact() {
+    local width=$1 height=$2 scale=$3
+    [[ $width =~ ^[0-9]+$ && $height =~ ^[0-9]+$ ]] || return 1
+    display_is_scale "$scale" || return 1
+    awk -v w="$width" -v h="$height" -v s="$scale" '
+        BEGIN {
+            parts = split(s, part, ".")
+            if (parts == 1) { num = s + 0; den = 1 }
+            else { num = (part[1] part[2]) + 0; den = 10 ^ length(part[2]) }
+            if (num <= 0) exit 1
+            exit ((w * den) % num != 0 || (h * den) % num != 0)
+        }'
+}
+
+# The scale that will really be applied: the requested one when it is exact, 1.0
+# otherwise.
+#
+# Prints the scale and returns 1 when it had to fall back, so the caller can
+# explain why instead of leaving behind a difference the user cannot see.
+display_scale_effective() {
+    local width=$1 height=$2 requested=$3
+    if display_scale_is_exact "$width" "$height" "$requested"; then
+        printf '%s' "$requested"
+        return 0
+    fi
+    printf '1.0'
+    return 1
+}
+
+# Why a scale cannot be used, as one line of text.
+display_scale_reason() {
+    local width=$1 height=$2 scale=$3
+    awk -v w="$width" -v h="$height" -v s="$scale" 'BEGIN {
+        printf "%dx%d at scale %s is %.2fx%.2f layout pixels", w, h, s, w / s, h / s
+    }'
+}
+
 # ---------------------------------------------------------------------------
 # ivm display
 # ---------------------------------------------------------------------------
@@ -213,10 +283,16 @@ Options for create:
   --height N     Override the height in pixels
   --fps N        Override the refresh rate
   --side S       right (default), left, above or below
+  --scale N      Layout scale, 0.5 to 4 (default 1.0)
   --dry-run      Print the plan without touching the compositor
 
 Size comes from, in this order: the flags, the request Moonlight sent to
 Sunshine, then ~/.config/ivm/config.
+
+A scale is only applied when it divides the mode into whole layout pixels, which
+is what the compositor requires. 2360x1640 at 1.6 gives 1475x1025 and works;
+1920x1334 at 1.6 gives 833.75 and would silently become 2, so it falls back to
+1.0 instead.
 EOF
 }
 
@@ -263,7 +339,7 @@ _display_status() {
         return "$IVM_EXIT_PROBLEMS"
     fi
 
-    printf '%s%s%s  side: %s\n' "$IVM_C_BOLD" "$(display_name)" "$IVM_C_RESET" "$IVM_SIDE"
+    printf '%s%s%s  side: %s, scale: %s\n' "$IVM_C_BOLD" "$(display_name)" "$IVM_C_RESET" "$IVM_SIDE" "$IVM_SCALE"
 
     if ! display_exists; then
         ivm_info 'not created (it is created when a client connects)'
@@ -303,16 +379,23 @@ _display_status() {
 
     # The plan, so a wrong side or an unexpected size shows up before a client
     # connects and finds out the hard way.
-    local width=$IVM_WIDTH height=$IVM_HEIGHT fps=$IVM_FPS source='config'
-    local client box
+    local width=$IVM_WIDTH height=$IVM_HEIGHT fps=$IVM_FPS scale=$IVM_SCALE source='the config file'
+    local client box effective
     if client=$(display_client_mode); then
         read -r width height fps <<<"$client"
-        source='client'
+        source='the request from Moonlight'
     fi
     box=$(display_other_box)
     local x y
-    read -r x y <<<"$(display_position "$width" "$height")"
-    ivm_detail "create would use ${width}x${height}@${fps} (${source}) at ${x}x${y}"
+    if effective=$(display_scale_effective "$width" "$height" "$scale"); then
+        read -r x y <<<"$(display_position "$width" "$height" "" "$effective")"
+        ivm_detail "create would use ${width}x${height}@${fps} (${source}) at ${x}x${y}, scale ${effective}"
+    else
+        read -r x y <<<"$(display_position "$width" "$height" "" "$effective")"
+        ivm_detail "create would use ${width}x${height}@${fps} (${source}) at ${x}x${y}, scale 1.0"
+        ivm_warn "scale $scale is not usable here: $(display_scale_reason "$width" "$height" "$scale")"
+        ivm_detail 'Hyprland needs whole layout pixels and would apply 2 instead'
+    fi
     if [[ -z $box ]]; then
         ivm_warn 'no other output is enabled, so there is no desktop to attach to'
     fi
@@ -321,12 +404,12 @@ _display_status() {
 }
 
 _display_create() {
-    local opt_width='' opt_height='' opt_fps='' side='' dry_run=0
+    local opt_width='' opt_height='' opt_fps='' opt_scale='' side='' dry_run=0
     local arg value
 
     while (($#)); do
         case $1 in
-            --width|--height|--fps|--side)
+            --width|--height|--fps|--side|--scale)
                 if (($# < 2)); then
                     ivm_error "display create: $1 needs a value"
                     return "$IVM_EXIT_USAGE"
@@ -338,6 +421,7 @@ _display_create() {
                     height) opt_height=$value ;;
                     fps) opt_fps=$value ;;
                     side) side=$value ;;
+                    scale) opt_scale=$value ;;
                 esac
                 shift 2
                 ;;
@@ -351,16 +435,18 @@ _display_create() {
     done
 
     # Explicit flags win over the client's request, which wins over the config.
-    local width=$IVM_WIDTH height=$IVM_HEIGHT fps=$IVM_FPS source='the config file'
+    local width=$IVM_WIDTH height=$IVM_HEIGHT fps=$IVM_FPS scale=$IVM_SCALE
+    local source='the config file'
     local client
     if client=$(display_client_mode); then
         read -r width height fps <<<"$client"
         source='the request from Moonlight'
     fi
-    if [[ -n $opt_width || -n $opt_height || -n $opt_fps ]]; then
+    if [[ -n $opt_width || -n $opt_height || -n $opt_fps || -n $opt_scale ]]; then
         width=${opt_width:-$width}
         height=${opt_height:-$height}
         fps=${opt_fps:-$fps}
+        scale=${opt_scale:-$scale}
         source='the command line'
     fi
     side=${side:-$IVM_SIDE}
@@ -377,42 +463,68 @@ _display_create() {
         ivm_error "display create: side must be right, left, above or below, got '$side'"
         return "$IVM_EXIT_USAGE"
     fi
+    if ! display_is_scale "$scale"; then
+        ivm_error "display create: scale must be a number between 0.5 and 4, got '$scale'"
+        return "$IVM_EXIT_USAGE"
+    fi
 
     if ! hypr_env_discover; then
         ivm_error 'hyprland: cannot reach the compositor; is Hyprland running?'
         return "$IVM_EXIT_PROBLEMS"
     fi
 
+    local effective
+    if effective=$(display_scale_effective "$width" "$height" "$scale"); then
+        :
+    else
+        # Said once, out loud, because the alternative is a layout that does not
+        # match what was asked for and no way to tell why.
+        ivm_warn "scale $scale cannot be applied: $(display_scale_reason "$width" "$height" "$scale")"
+        ivm_detail "Hyprland would round it; using 1.0. Scale $scale works with a mode both of whose dimensions divide by it."
+    fi
+
     local x y box
-    read -r x y <<<"$(display_position "$width" "$height" "$side")"
+    read -r x y <<<"$(display_position "$width" "$height" "$side" "$effective")"
     box=$(display_other_box)
 
     if ((dry_run)); then
-        printf 'would create %s at %sx%s@%s, position %sx%s (%s)\n' \
-            "$(display_name)" "$width" "$height" "$fps" "$x" "$y" "side $side, size from $source"
+        printf 'would create %s at %sx%s@%s, position %sx%s, scale %s (%s)\n' \
+            "$(display_name)" "$width" "$height" "$fps" "$x" "$y" "$effective" \
+            "side $side, size from $source"
         if [[ -z $box ]]; then
             printf 'warning: no other output is enabled, so there is nothing to attach to\n' >&2
         fi
         return "$IVM_EXIT_OK"
     fi
 
-    _display_bring_up "$width" "$height" "$fps" "$side"
+    _display_bring_up "$width" "$height" "$fps" "$side" "$effective"
 }
 
 # The real work, shared by `ivm display create` and the Sunshine hook.
 # Prints what it did; returns non-zero only when the output is not usable.
 _display_bring_up() {
-    local width=$1 height=$2 fps=$3 side=$4
-    local name x y
+    local width=$1 height=$2 fps=$3 side=$4 scale=${5:-1.0}
+    local name x y effective
 
     name=$(display_name)
-    read -r x y <<<"$(display_position "$width" "$height" "$side")"
+
+    # A scale that cannot be applied must not be handed to the compositor: it
+    # would round it, and the layout would stop matching the position computed
+    # below.
+    if effective=$(display_scale_effective "$width" "$height" "$scale"); then
+        :
+    else
+        ivm_warn "scale $scale cannot be applied: $(display_scale_reason "$width" "$height" "$scale")"
+        ivm_detail 'using 1.0 instead; the compositor would round it to 2'
+    fi
+
+    read -r x y <<<"$(display_position "$width" "$height" "$side" "$effective")"
 
     # Creating an output can move the active window onto it and steal the focus.
     hypr_focus_snapshot || true
 
     hypr_output_create "$name" || return "$IVM_EXIT_PROBLEMS"
-    if ! hypr_apply_monitor_rule "$name" "${width}x${height}@${fps}" "${x}x${y}" 1.0; then
+    if ! hypr_apply_monitor_rule "$name" "${width}x${height}@${fps}" "${x}x${y}" "$effective"; then
         return "$IVM_EXIT_PROBLEMS"
     fi
 
@@ -420,20 +532,24 @@ _display_bring_up() {
 
     # Read the state back instead of believing the rule was applied.
     local attempt=0
-    until display_matches "$width" "$height" "$fps" "$x" "$y"; do
+    until display_matches "$width" "$height" "$fps" "$x" "$y" "$effective"; do
         attempt=$((attempt + 1))
         ((attempt < 20)) || break
         sleep 0.05
     done
 
-    if ! display_matches "$width" "$height" "$fps" "$x" "$y"; then
+    if ! display_matches "$width" "$height" "$fps" "$x" "$y" "$effective"; then
         ivm_fail "$name did not take ${width}x${height}@${fps} at ${x}x${y}"
-        ivm_detail "the compositor reports: $(display_geometry)"
+        ivm_detail "the compositor reports: $(display_geometry), scale $(display_scale)"
         ivm_detail 'a monitor rule in the Hyprland config may override the runtime one'
         return "$IVM_EXIT_PROBLEMS"
     fi
 
-    ivm_ok "$name is up: ${width}x${height}@${fps} at ${x}x${y} (side $side)"
+    if [[ $effective == 1 || $effective == 1.0 ]]; then
+        ivm_ok "$name is up: ${width}x${height}@${fps} at ${x}x${y} (side $side)"
+    else
+        ivm_ok "$name is up: ${width}x${height}@${fps} at ${x}x${y} (side $side, scale ${effective}, $(display_layout_size "$width" "$height" "$effective") layout)"
+    fi
 
     case $(display_adjacency) in
         ok) ivm_ok 'touches another output, so the pointer can reach it' ;;
@@ -531,6 +647,7 @@ _display_prep_body() {
     # A broken config must not take the stream down with it: fall back to the
     # known-good values and say so in the log.
     local width=$IVM_WIDTH height=$IVM_HEIGHT fps=$IVM_FPS side=$IVM_SIDE
+    local scale=$IVM_SCALE
     local source='config'
     if ! display_is_size "$width" "$height"; then
         printf -- '-- unusable configured size %sx%s, using 1920x1334 --\n' "$width" "$height"
@@ -545,6 +662,10 @@ _display_prep_body() {
         printf -- '-- unusable configured side %s, using right --\n' "$side"
         side=right
     fi
+    if ! display_is_scale "$scale"; then
+        printf -- '-- unusable configured scale %s, using 1.0 --\n' "$scale"
+        scale=1.0
+    fi
 
     local client
     if client=$(display_client_mode); then
@@ -553,7 +674,7 @@ _display_prep_body() {
     else
         printf -- '-- no usable client size, using %sx%s@%s from the config --\n' "$width" "$height" "$fps"
     fi
-    printf -- '-- requested %sx%s@%s (%s) --\n' "$width" "$height" "$fps" "$source"
+    printf -- '-- requested %sx%s@%s (scale %s, %s) --\n' "$width" "$height" "$fps" "$scale" "$source"
 
-    _display_bring_up "$width" "$height" "$fps" "$side"
+    _display_bring_up "$width" "$height" "$fps" "$side" "$scale"
 }
