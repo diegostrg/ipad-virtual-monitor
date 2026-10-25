@@ -10,6 +10,9 @@ carries the video stream and a private USB network between the two devices.
 It is built to keep working: turn on the PC, plug in the iPad, open Moonlight,
 connect!!! :)))
 
+---
+
+
 ![A laptop with the iPad on a stand beside it, the iPad showing a terminal as an extended desktop](docs/images/laptop-and-ipad.jpg)
 
 *Extended, not mirrored: the iPad has its own workspace, windows and cursor.*
@@ -18,7 +21,9 @@ connect!!! :)))
 
 *2360x1640 at 60 fps, HEVC, no dropped frames, 2 ms of network latency.*
 
+---
 ## How it works
+
 
 Four layers, each one useless without the next:
 
@@ -33,6 +38,8 @@ Four layers, each one useless without the next:
 
 Each layer has its own document under [docs/](docs/).
 
+
+---
 ## Requirements
 
 | Component | Notes |
@@ -47,6 +54,7 @@ Each layer has its own document under [docs/](docs/).
 
 Optional: UFW, which is only configured when it is already active.
 
+---
 ## Install
 
 One command. It runs as your user, prints its plan first, and asks once:
@@ -73,6 +81,7 @@ bash install.sh --dry-run   # the plan, printed and nothing else
 bash install.sh
 ```
 
+---
 ## Usage
 
 ```bash
@@ -110,6 +119,7 @@ Every command also accepts `--help`, and the ones that change something accept
 `--dry-run`. The full reference, with sample output, is in
 [docs/commands.md](docs/commands.md).
 
+---
 ## Configuration
 
 `ivm` reads `~/.config/ivm/config` if it exists. Every key is optional:
@@ -133,6 +143,7 @@ with the size it divides: `2360x1640` at `1.6` works, `1920x1334` falls back to
 `1.0` and says so. With `FOLLOW_CLIENT=yes`, Moonlight's own resolution setting
 still wins: *Full / Safe Area* keeps the scale, *PC/Game resolution* drops it.
 
+---
 ## Something is wrong?
 
 ```bash
@@ -143,6 +154,7 @@ ivm doctor --report   # sanitized, ready to paste into an issue
 [docs/troubleshooting.md](docs/troubleshooting.md) maps symptoms to causes. When
 the iPad shows a clone of the laptop panel, `ivm status` says so explicitly.
 
+---
 ## Documentation
 
 - [Commands](docs/commands.md) — every command, its flags and its output
@@ -154,6 +166,7 @@ the iPad shows a clone of the laptop panel, `ivm status` says so explicitly.
 - [Troubleshooting](docs/troubleshooting.md) — symptom → cause → fix
 - [Roadmap](docs/roadmap.md) — what is done and what comes next
 
+---
 ## Soooome Credits!
 
 The USB networking approach is inspired by
@@ -162,14 +175,16 @@ documents the `usbmuxd` device mode and the NetworkManager shared connection.
 That guide targets X11; this project adapts the idea to Wayland. Take a look if
 you are on X11 or Linux Mint.
 
+---
 ## Status
 
 Early development, verified on Hyprland under CachyOS. Other compositors are
 planned but not claimed; reports from other setups are welcome. See
 [docs/roadmap.md](docs/roadmap.md).
 
+---
 ## License
 
 MIT — see [LICENSE](LICENSE). Fork it, change it, ship it, sell it: the only
 condition is keeping the copyright notice. A mention is appreciated, but not
-required.
+required! :)
