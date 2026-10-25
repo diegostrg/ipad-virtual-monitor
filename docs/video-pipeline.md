@@ -102,23 +102,66 @@ Notes that cost time to discover:
   between calls. A value can be stored in a global and read by a later call.
 
 The position is computed from the current layout rather than hardcoded, so the
-virtual monitor lands to the right of the laptop panel regardless of its
-resolution.
+virtual monitor lands beside the laptop panel regardless of its resolution.
 
-### Resolution and aspect ratio
+### Placement matters as much as the mode
 
-The source resolution must match the tablet's aspect ratio or the client will
-letterbox. For an iPad Air 11" (2360×1640) the exact equivalent is
-**1920×1334** (ratio 1.4390).
+Two enabled outputs that are not adjacent break input in a way that looks like a
+Streaming bug but is pure geometry: the cursor cannot cross empty space, so it
+stops at the edge of the laptop panel and never reaches the tablet.
 
-Scaling does not change the stream: Sunshine captures the physical resolution
-of the `wl_output`. Setting `scale = 1.5` only changes the logical size of the
-virtual desktop; the encoded frame stays 1920×1334.
+```text
+eDP-1      0..1920
+MOONLIGHT  3840..6200      ← nothing between 1920 and 3840
+```
 
-Sunshine exposes the client's requested dimensions to prep commands through
-environment variables. The tool prefers those values when present and falls
-back to a known profile (1920×1334 for this iPad). This needs to be verified
-end to end before it becomes the default; see the roadmap.
+The placement must therefore be computed from the bounding box of the **other**
+enabled outputs, never from a box that includes the virtual output itself: if
+the output already exists from an earlier session, including it pushes the new
+position past its own right edge and opens exactly that gap.
+
+The side is a user preference, not a constant. Someone with the tablet to the
+left of the laptop needs `left`, or the cursor never reaches it:
+
+| Side | Position |
+|------|----------|
+| `right` (default) | `x = max(right edge of others)`, `y = min(y)` |
+| `left` | `x = min(x) - width`, `y = min(y)` |
+| `above` | `x = min(x)`, `y = min(y) - height` |
+| `below` | `x = min(x)`, `y = max(bottom)` |
+
+Overlapping outputs produce the mirror symptom: the cursor enters a monitor the
+user did not expect, and windows appear in an invisible area.
+
+### Resolution, refresh rate and aspect ratio
+
+The source resolution should match the tablet's panel or the client letterboxes
+or rescales. For an iPad Air 11" the native size is **2360×1640**; `1920×1334`
+is its exact 1.4390 equivalent, which is cheaper to encode and looks the same at
+normal viewing distance.
+
+Scaling does not change the stream: Sunshine captures the physical resolution of
+the `wl_output`. Setting `scale = 1.5` only changes the logical size of the
+virtual desktop; the encoded frame keeps its pixel size.
+
+All three values come from the client. Sunshine passes them to prep commands as
+environment variables, verified on real hardware with two different Moonlight
+sessions:
+
+```text
+SUNSHINE_CLIENT_WIDTH=1920   SUNSHINE_CLIENT_HEIGHT=1334   SUNSHINE_CLIENT_FPS=60
+SUNSHINE_CLIENT_WIDTH=2360   SUNSHINE_CLIENT_HEIGHT=1640   SUNSHINE_CLIENT_FPS=60
+```
+
+Moonlight on iPad exposes this as *PC/Game resolution* (`1920x1334`, or *Full /
+Safe Area* for the native 2360×1640), so the user chooses it from the client and
+the host follows. A fixed size and rate must still be configurable for clients
+that request something unusable, and `1920×1334@60` is the fallback profile.
+
+Refresh rate matters for ProMotion tablets: an iPad Pro asks for 120 Hz, and a
+headless output accepts it. A mode the compositor cannot produce falls back to
+the closest available, so the tool must read back what was actually applied
+instead of assuming the request succeeded.
 
 ## Lifecycle: who creates and destroys the output
 

@@ -44,7 +44,11 @@ before the previous phase is verified on real hardware.
 - [ ] Support Lua and legacy Hyprland dialects
 - [ ] Idempotent creation: `Name already taken` counts as success
 - [ ] `ivm display prep` hook for Sunshine (create before capture)
-- [ ] Resolution from the client request, with the 1920×1334 fallback
+- [ ] Resolution and refresh rate from the client request
+      (`SUNSHINE_CLIENT_WIDTH/HEIGHT/FPS`), with the 1920×1334@60 fallback
+- [ ] Fixed size and rate as an explicit user override
+- [ ] Configurable side: `right`, `left`, `above`, `below`
+- [ ] Read back the applied mode instead of trusting the request
 - [ ] Snapshot and restore the focused monitor and the active window
 - [ ] Reconcile with existing monitor rules (`hl.monitor` replaces them)
 - [ ] Verify that Sunshine passes the client's dimensions to prep commands

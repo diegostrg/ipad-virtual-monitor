@@ -22,6 +22,7 @@ layer 4, so never start with Sunshine.
 | iPad shows a clone of the laptop | 4 — capture backend | `capture` must be `wlr`, not `kms` |
 | Image appears but is blurry | 3 — resolution | output mode vs client request |
 | Keyboard stops responding after connecting | 3 — focus side effect | active window moved to `MOONLIGHT` |
+| Keyboard and mouse work from the iPad, but the host cursor cannot reach it | 3 — layout | gap or overlap in `hyprctl monitors` |
 | Works after manual setup, breaks after reboot | 3 — ephemeral output | nothing recreates `MOONLIGHT` |
 | Output never disappears after disconnect | lifecycle — supervisor | `systemctl --user status ivm-watch` |
 | Works in terminal, fails from Sunshine | 4 — service environment | `HYPRLAND_INSTANCE_SIGNATURE` |
@@ -201,6 +202,41 @@ land on an invisible area. Check for duplicates:
 ```bash
 hyprctl monitors all -j | jq '.[] | "\(.name) x=\(.x) y=\(.y) disabled=\(.disabled)"'
 ```
+
+### The host cursor cannot reach the iPad
+
+The stream works, the image is correct, but the mouse stops at the edge of the
+laptop panel and never enters the virtual output. The desktop layout is broken:
+the outputs are not adjacent.
+
+```bash
+hyprctl monitors -j | jq -r '.[] | select(.disabled|not) | "\(.name) \(.x)..\(.x + .width)"'
+```
+
+```text
+eDP-1      0..1920
+MOONLIGHT  3840..6200     ← gaps between 1920 and 3840
+```
+
+The cursor cannot cross empty space. Two mistakes produce this:
+
+- Computing the new position from a bounding box that **includes the virtual
+  output itself**, so it lands to the right of where it already was.
+- Placing the output at a hardcoded coordinate while the laptop panel has a
+  different width.
+
+The fix is to compute the position from everything except the virtual output,
+and to pick the edge the user actually wants:
+
+| Value | Position |
+|-------|----------|
+| `right` | `x = max(right edge)`, `y = min(y)` |
+| `left` | `x = min(x) - width`, `y = min(y)` |
+| `above` | `x = min(x)`, `y = min(y) - height` |
+| `below` | `x = min(x)`, `y = max(bottom)` |
+
+Overlapping outputs cause the opposite symptom: the cursor enters a monitor that
+is not the one expected, and windows land on an invisible area.
 
 ### The keyboard stops responding after connecting
 
