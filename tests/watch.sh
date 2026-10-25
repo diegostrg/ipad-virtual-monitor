@@ -34,12 +34,18 @@ check() {
 # --- stubs -----------------------------------------------------------------
 
 output_present=0
+restarts=0
+restart_result=0
 
 display_exists() { ((output_present)); }
 display_name() { printf 'MOONLIGHT'; }
-hypr_env_discover() { return 0; }
 sunshine_session_active() { ((session_running)); }
-_display_remove() { removals=$((removals + 1)); output_present=0; return 0; }
+
+# The real `sunshine_rearm` runs: it guards on the session, then calls this.
+sunshine_restart() {
+    restarts=$((restarts + 1))
+    return "$restart_result"
+}
 
 # A clock the test can move.
 fake_now=1000
@@ -55,9 +61,17 @@ reset() {
     output_present=0
     session_running=0
     removals=0
+    restarts=0
+    restart_result=0
     IVM_WATCH_IDLE_SINCE=0
     IVM_VERBOSE=0
     fake_now=1000
+    _IVM_WATCH_WARNED_MISSING=0
+    _IVM_WATCH_WAITING=0
+    _IVM_WATCH_REARM_PENDING=0
+    # Per test, so a stub replaced by one case cannot leak into the next.
+    hypr_env_discover() { return 0; }
+    _display_remove() { removals=$((removals + 1)); output_present=0; return 0; }
 }
 
 # --- a stream that ends is cleaned up after the grace period ----------------
@@ -108,6 +122,59 @@ reset
 output_present=1
 _watch_reconcile 0 >/dev/null
 check 'grace 0 removes on the first check' 0 "$output_present"
+
+# --- Sunshine is re-armed so the next connection runs the prep ------------
+#
+# Sunshine runs the prep when it launches the session's app, and the desktop app
+# never exits, so a stale process skips the hook and streams a clone. Removing
+# the output has to be paired with a restart.
+
+reset
+output_present=1
+session_running=1
+_watch_reconcile 20 >/dev/null
+check 'a running stream never restarts Sunshine' 0 "$restarts"
+
+session_running=0
+fake_now=4000
+_watch_reconcile 20 >/dev/null
+check 'nothing restarts before the grace period' 0 "$restarts"
+
+fake_now=4020
+_watch_reconcile 20 >/dev/null
+check 'the output goes before the restart' 0 "$output_present"
+check 'and Sunshine is restarted once' 1 "$restarts"
+check 'leaving no rearm pending' 0 "$_IVM_WATCH_REARM_PENDING"
+
+# --- a restart that fails is retried on the next tick ---------------------
+
+reset
+output_present=1
+restart_result=1
+_watch_reconcile 0 >/dev/null
+check 'a failed restart leaves the rearm pending' 1 "$_IVM_WATCH_REARM_PENDING"
+check 'the output is removed anyway' 0 "$output_present"
+
+fake_now=5000
+restart_result=0
+_watch_reconcile 20 >/dev/null
+check 'the next tick retries the restart' 2 "$restarts"
+check 'and clears the pending flag' 0 "$_IVM_WATCH_REARM_PENDING"
+
+# --- a client that returns while the rearm is pending is not disturbed ----
+
+reset
+output_present=1
+restart_result=1
+_watch_reconcile 0 >/dev/null
+check 'the rearm is pending after a failure' 1 "$_IVM_WATCH_REARM_PENDING"
+
+session_running=1
+restart_result=0
+restarts_before=$restarts
+_watch_reconcile 20 >/dev/null
+check 'a returning client is not interrupted' "$restarts_before" "$restarts"
+check 'and the pending rearm is dropped' 0 "$_IVM_WATCH_REARM_PENDING"
 
 # --- no output means nothing to do ----------------------------------------
 

@@ -194,8 +194,9 @@ disappear **after** the stream ends. Both sides of that window are awkward.
 
 ### Creation: the prep command
 
-`global_prep_cmd` runs on every stream launch. Measured order on real hardware,
-with the virtual output absent when the client connected:
+`global_prep_cmd` runs when Sunshine **launches the app** of a session, not on
+every client connection. Measured order on real hardware, with the virtual
+output absent when the client connected:
 
 ```text
 23:48:37.188   encoder probing starts
@@ -211,6 +212,30 @@ The decisive detail is that Sunshine re-enumerates the outputs at
 `CLIENT CONNECTED`, not only at process start. An output created by the prep
 command therefore takes part in that enumeration, and the stream ends up on the
 virtual monitor with no leftover clone.
+
+### Why a client that reconnects can still get a clone
+
+The app Sunshine streams for a plain desktop session is a placebo: it has no
+process of its own, and `proc_t::running()` reports it as alive for as long as
+Sunshine runs (`if (placebo) return _app_id;` in `src/process.cpp`). A second
+connection therefore reuses that app and **skips the prep command entirely**: the
+log shows no `Executing Do Cmd` line at all, only the enumeration.
+
+The consequence is exact. What decides the stream is whether the output exists
+at `CLIENT CONNECTED`:
+
+- it exists → extended desktop, as intended;
+- something removed it in between → Sunshine captures `eDP-1` and the client
+  shows a clone, with no error in any log.
+
+So the lifecycle of the output and the lifecycle of the prep command are not the
+same thing, and the tool has to keep them in step:
+
+- `ivm watch` restarts Sunshine after it removes the output, because a fresh
+  process will launch the app again and run the prep on the next connection;
+- `ivm up` does the same when there is no output and nobody is streaming;
+- `ivm status` and `ivm doctor` name the clone when a stream runs without the
+  output, because otherwise it looks like a healthy session.
 
 This is the whole on-demand design working: the monitor did not exist before the
 client connected, nothing was running beforehand, and the result was a real

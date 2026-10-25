@@ -358,6 +358,20 @@ Couldn't map 'HEADLESS-1'
 Set `capture = wlr` in `~/.config/sunshine/sunshine.conf` and restart Sunshine.
 The wlr backend captures virtual outputs through `wlr-screencopy`.
 
+There is a second cause, and it looks identical: the output does not exist at
+the moment the client connects. Sunshine runs `global_prep_cmd` when it launches
+the session's app, not on every connection, and the desktop app never exits, so a
+long-running Sunshine skips the hook. Check it:
+
+```bash
+ivm status          # says so when a stream runs without MOONLIGHT
+ivm doctor          # Layer 3 fails with the same explanation
+```
+
+The fix is to disconnect on the iPad and connect again, which re-runs the hook.
+`ivm watch` does this for you: when it removes the output after the grace period,
+it restarts Sunshine so the next connection starts from a clean process.
+
 ### The output never disappears after disconnecting
 
 Expected when nothing is supervising the lifecycle. `global_undo_cmd` is not a

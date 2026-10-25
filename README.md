@@ -319,6 +319,19 @@ systemctl --user daemon-reload && systemctl --user enable --now ivm-watch
 The unit expects `ivm` on your `PATH`; adjust `ExecStart` if you prefer an
 absolute path.
 
+#### Why it also restarts Sunshine
+
+Sunshine runs `global_prep_cmd` when it **launches the app** of a session, not on
+every client connection, and the desktop app it streams is a placebo that never
+exits. A Sunshine that is still running therefore believes the app is alive,
+skips the prep on the next connection, finds no `MOONLIGHT`, and quietly streams
+a clone of the laptop panel instead.
+
+So when the supervisor removes the output, it also restarts Sunshine. With
+nobody connected that costs a couple of seconds and arms the hook for the next
+connection. `ivm status` and `ivm doctor` call out the clone explicitly if it
+ever happens, because the stream itself looks perfectly healthy.
+
 ### Configuration
 
 `ivm` reads `~/.config/ivm/config` if it exists. Every key is optional:

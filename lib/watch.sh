@@ -21,6 +21,7 @@ IVM_WATCH_IDLE_SINCE=0
 
 _IVM_WATCH_WARNED_MISSING=0
 _IVM_WATCH_WAITING=0
+_IVM_WATCH_REARM_PENDING=0
 
 ivm_watch() {
     local grace=$IVM_GRACE interval=$IVM_WATCH_INTERVAL once=0 arg
@@ -112,6 +113,17 @@ _watch_reconcile() {
         _IVM_WATCH_WAITING=0
     fi
 
+    # A restart that failed is retried here rather than abandoned: without it
+    # the next client would connect to a Sunshine that skips the prep hook and
+    # silently streams a clone of the laptop panel.
+    if ((_IVM_WATCH_REARM_PENDING)); then
+        if sunshine_session_active || display_exists; then
+            _IVM_WATCH_REARM_PENDING=0
+        else
+            _watch_rearm
+        fi
+    fi
+
     local name
     name=$(display_name)
 
@@ -133,7 +145,8 @@ _watch_reconcile() {
     fi
 
     _IVM_WATCH_WARNED_MISSING=0
-_IVM_WATCH_WAITING=0
+    _IVM_WATCH_WAITING=0
+_IVM_WATCH_REARM_PENDING=0
 
     if ! display_exists; then
         IVM_WATCH_IDLE_SINCE=0
@@ -167,11 +180,25 @@ _IVM_WATCH_WAITING=0
 }
 
 _watch_remove() {
-    if _display_remove >/dev/null 2>&1; then
-        _watch_say "$(display_name) removed; the desktop is back to its own outputs"
+    if ! _display_remove >/dev/null 2>&1; then
+        _watch_say "could not remove $(display_name), will try again"
+        return 1
+    fi
+    _watch_say "$(display_name) removed; the desktop is back to its own outputs"
+    # Removing the output is only half of it: Sunshine still holds the session
+    # and would skip the prep on the next connection. See sunshine_rearm.
+    _watch_rearm
+    return 0
+}
+
+_watch_rearm() {
+    if sunshine_rearm; then
+        _IVM_WATCH_REARM_PENDING=0
+        _watch_say 'Sunshine restarted, so the next connection builds it again'
         return 0
     fi
-    _watch_say "could not remove $(display_name), will try again"
+    _IVM_WATCH_REARM_PENDING=1
+    _watch_say 'could not restart Sunshine yet, will try again'
     return 1
 }
 

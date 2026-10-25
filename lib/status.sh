@@ -31,6 +31,14 @@ ivm_status() {
 
     printf '\n'
     if sunshine_session_active 2>/dev/null; then
+        # A stream without the virtual output is a clone: Sunshine chose the
+        # laptop panel because there was nothing else to capture. Never let that
+        # pass as a normal line.
+        if ! display_exists 2>/dev/null; then
+            printf 'A client is streaming, but %s is missing: the iPad is showing a\n' "$(display_name)"
+            printf 'clone of the laptop panel. Disconnect and connect again.\n'
+            return "$IVM_EXIT_PROBLEMS"
+        fi
         printf 'A client is streaming.\n'
     elif display_exists 2>/dev/null; then
         printf 'Idle. %s exists; the supervisor removes it after %ss of inactivity.\n' \

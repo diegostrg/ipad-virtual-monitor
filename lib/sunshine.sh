@@ -177,6 +177,19 @@ sunshine_set_key() {
 
 # Restart Sunshine and wait for it to come back. It can die at boot when it starts
 # before the compositor, so "started" is not the same as "running".
+# Sunshine runs `global_prep_cmd` when it *launches* the session's app, not on
+# every client connection, and the desktop app is a placebo that never exits.
+# A running Sunshine therefore keeps believing the app is alive and skips the
+# prep entirely: the next client finds no virtual output and gets a silent clone
+# of the laptop panel. Restarting the process is the only way to arm the hook
+# again, and it must never happen while somebody is streaming.
+sunshine_rearm() {
+    if sunshine_session_active; then
+        return 1
+    fi
+    sunshine_restart
+}
+
 sunshine_restart() {
     local unit attempt=0
     unit=$(sunshine_unit) || return 1

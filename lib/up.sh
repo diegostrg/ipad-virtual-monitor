@@ -148,6 +148,15 @@ _up_sunshine() {
 
     if ((changed)); then
         _up_restart_sunshine || return 1
+    elif ! display_exists && ! sunshine_session_active; then
+        # No output and no stream: the next client would find nothing to capture,
+        # because Sunshine only runs the prep when it launches the app. A restart
+        # now arms it, and with nobody streaming it costs nothing.
+        if sunshine_rearm; then
+            ivm_ok 'Sunshine restarted so the next connection builds the output'
+        else
+            ivm_warn 'could not restart Sunshine; the next connection may clone the panel'
+        fi
     fi
     return 0
 }
@@ -297,6 +306,18 @@ EOF
         _display_remove || ivm_warn 'the virtual output could not be removed'
     else
         ivm_warn 'cannot reach the compositor, so the virtual output was not touched'
+    fi
+
+    # The output is gone, so Sunshine has to forget the session it is holding:
+    # otherwise the next connection skips the prep hook and clones the panel.
+    if ((all)); then
+        :
+    elif sunshine_session_active; then
+        ivm_warn 'a client is streaming; Sunshine keeps its session until it ends'
+    elif sunshine_rearm; then
+        ivm_ok 'Sunshine restarted, so the next connection builds the output again'
+    else
+        ivm_warn 'could not restart Sunshine; the next connection may clone the panel'
     fi
 
     if ((all)); then

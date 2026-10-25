@@ -369,7 +369,8 @@ _doctor_display() {
         fi
     elif sunshine_session_active; then
         ivm_fail "$IVM_OUTPUT_NAME does not exist while a stream is running"
-        ivm_detail 'the prep command did not run, or failed; check the session log'
+        ivm_detail 'the iPad is showing a clone of the laptop panel'
+        ivm_detail 'disconnect and connect again: Sunshine only runs the prep when it launches the app'
     else
         ivm_info "$IVM_OUTPUT_NAME does not exist (it is created when a client connects)"
     fi
