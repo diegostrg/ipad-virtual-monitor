@@ -123,7 +123,12 @@ output_present=1
 hypr_env_discover() { return 1; }
 _watch_reconcile 0 >/dev/null
 check 'an unreachable compositor does not remove anything' 1 "$output_present"
+check 'a repeated failure is only announced once' 1 "$_IVM_WATCH_WAITING"
+_watch_reconcile 0 >/dev/null
+check 'and it is not announced again' 1 "$_IVM_WATCH_WAITING"
 hypr_env_discover() { return 0; }
+_watch_reconcile 0 >/dev/null
+check 'recovery is announced and clears the flag' 0 "$_IVM_WATCH_WAITING"
 
 # --- a failed removal is retried ------------------------------------------
 

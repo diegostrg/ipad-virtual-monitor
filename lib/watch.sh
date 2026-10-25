@@ -20,6 +20,7 @@ IVM_WATCH_INTERVAL=${IVM_WATCH_INTERVAL:-2}
 IVM_WATCH_IDLE_SINCE=0
 
 _IVM_WATCH_WARNED_MISSING=0
+_IVM_WATCH_WAITING=0
 
 ivm_watch() {
     local grace=$IVM_GRACE interval=$IVM_WATCH_INTERVAL once=0 arg
@@ -96,11 +97,19 @@ EOF
 _watch_reconcile() {
     local grace=$1 loud=${2:-0} now
 
-    # The compositor may be unreachable (a restart, for instance). Report it and
-    # keep going: the supervisor has to outlive the session.
+    # The compositor may be unreachable (at boot, or during a restart). Say it
+    # once and keep going: the supervisor has to outlive the session, and one
+    # line every two seconds would bury everything else in the journal.
     if ! hypr_env_discover; then
-        _watch_say 'cannot reach the compositor, waiting for it'
+        if ((!_IVM_WATCH_WAITING)); then
+            _watch_say 'cannot reach the compositor, waiting for it'
+            _IVM_WATCH_WAITING=1
+        fi
         return 0
+    fi
+    if ((_IVM_WATCH_WAITING)); then
+        _watch_say 'the compositor is reachable again'
+        _IVM_WATCH_WAITING=0
     fi
 
     local name
@@ -124,6 +133,7 @@ _watch_reconcile() {
     fi
 
     _IVM_WATCH_WARNED_MISSING=0
+_IVM_WATCH_WAITING=0
 
     if ! display_exists; then
         IVM_WATCH_IDLE_SINCE=0
