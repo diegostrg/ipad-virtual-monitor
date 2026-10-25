@@ -288,6 +288,11 @@ not edit your configuration.
   Check `hyprctl monitors` and the monitor list in Sunshine's log. Note that
   `Selected monitor []` is printed even on successful streams and is not a
   diagnostic signal.
+- **Sunshine picks the laptop panel at startup.** If `output_name` names an
+  output that does not exist when Sunshine starts, it logs
+  `Selected monitor [<first monitor found>]` and keeps going with the laptop
+  panel instead of failing. The prep command must have created the output before
+  the stream's own capture selection, or the client shows a clone.
 - **iPad shows a clone of the laptop.** `capture = kms` cannot see headless
   outputs. Switch to `wlr`.
 - **Keyboard stops responding after connecting.** The active window moved to

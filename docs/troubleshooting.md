@@ -26,6 +26,7 @@ layer 4, so never start with Sunshine.
 | Output never disappears after disconnect | lifecycle — supervisor | `systemctl --user status ivm-watch` |
 | Works in terminal, fails from Sunshine | 4 — service environment | `HYPRLAND_INSTANCE_SIGNATURE` |
 | Input does not reach the host | 4 — permissions | uinput / udev rules |
+| Nothing works after a reboot, Moonlight cannot reach the host | 4 — Sunshine not running | `systemctl --user status ...Sunshine` |
 
 ## Layer 1 — no USB network interface
 
@@ -233,6 +234,31 @@ it. It must be `0.0.0.0:47989` or the USB address.
 
 Confirm the firewall allows Sunshine's ports on the USB interface. The safest
 approach is to scope the rules to `usb0` rather than opening them globally.
+
+### Sunshine is not running after a reboot
+
+A user service ordered only against `default.target` can start **before** the
+compositor. Sunshine then has no Wayland display to talk to and gives up:
+
+```text
+Error: Unable to initialize capture method
+Error: Platform failed to initialize
+Fatal: Unable to find display or encoder during startup.
+```
+
+It exits and, because the exit status is success, `Restart=on-failure` does not
+bring it back. Moonlight never finds the host, and every other layer looks fine.
+
+Check the uptime of the process against the session:
+
+```bash
+systemctl --user is-active app-dev.lizardbyte.app.Sunshine.service
+journalctl --user -u app-dev.lizardbyte.app.Sunshine.service -b | grep -E 'Fatal|Found display'
+```
+
+`Found display [wayland-N]` must appear. If it does not, start the service by
+hand once the desktop is up. A robust setup orders the unit after the
+compositor's session target, or keeps a supervisor that starts it when needed.
 
 ### The iPad shows a clone of the laptop
 
