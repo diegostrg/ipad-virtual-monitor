@@ -15,6 +15,7 @@ failure is the one to fix. The matrix below is for reading the result.
 | Symptom | Most likely layer | First check |
 |---------|-------------------|-------------|
 | No `usbX` interface appears | 1 — USB link | `lsusb`, `journalctl -u usbmuxd` |
+| The iPad connects but exposes no network interface | 1 — USB mode | `ivm deps status`, then `ivm deps build` |
 | Just plugged in: iPad on the bus, no `usbN` yet | 1 — enumeration | wait a few seconds |
 | Interface exists, iPad has no IP | 2 — DHCP/firewall | `ivm net status`, UFW UDP/67 |
 | Works until the iPad reconnects, then it never gets an address | 2 — firewall destination | the DHCP rule must not name an address |

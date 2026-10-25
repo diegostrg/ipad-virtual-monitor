@@ -33,7 +33,7 @@ if [[ ! -r $IVM_LIB_DIR/common.sh ]]; then
 fi
 
 # shellcheck source=/dev/null
-for _module in common config platform usb network net hyprland sunshine display watch up status doctor completion; do
+for _module in common config platform usb network net hyprland sunshine display watch up status doctor deps completion; do
     . "$IVM_LIB_DIR/$_module.sh"
 done
 unset _module
@@ -47,6 +47,7 @@ Usage:
   ivm down [--all]         Remove the output and stop the supervisor
   ivm status               One-screen summary of the current state
   ivm net                  Report, set up or take down the USB network
+  ivm deps [status|build]  Inspect or build the Apple USB stack
   ivm doctor [options]     Inspect every layer and report what is broken
   ivm display              Create, remove or inspect the virtual output
   ivm watch                Remove the output when the stream ends
@@ -76,6 +77,7 @@ main() {
         down)     ivm_down "$@" ;;
         status)   ivm_status "$@" ;;
         net)      ivm_net "$@" ;;
+        deps)     ivm_deps "$@" ;;
         doctor)   ivm_doctor "$@" ;;
         display)  ivm_display "$@" ;;
         watch)    ivm_watch "$@" ;;

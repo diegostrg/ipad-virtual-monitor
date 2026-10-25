@@ -27,6 +27,8 @@ network between the two devices.
 - `ivm down` — removes the output and stops the supervisor.
 - `ivm net` — reports the USB network, sets it up, or takes it down. It needs
   root for the network itself, so it prints every command and asks once.
+- `ivm deps` — inspects the Apple USB stack, or builds it from source when the
+  distribution package cannot switch the iPad's USB mode.
 - `ivm doctor` — read-only, no root, walks all four layers and explains failures.
   `--report` turns that into a sanitized report you can paste into an issue.
 - `ivm display` — create, remove and inspect the virtual output by hand.
@@ -71,6 +73,29 @@ so line by line:
 It never asks for root. Anything that needs it is printed as the command to run.
 `ivm down` undoes the runtime state (output removed, supervisor stopped) but
 leaves the configuration alone, so the next `ivm up` is instant.
+
+### The Apple USB stack
+
+The distribution's `usbmuxd` cannot switch the iPad into the USB mode that
+exposes its network interface: the feature landed upstream in December 2022 and
+no release has been cut since. `ivm` detects that, and it can build the stack
+for you:
+
+```bash
+ivm deps status            # read-only: tools, libraries, daemon, service
+ivm deps build --dry-run   # print every command, change nothing
+ivm deps build             # print the plan again, ask once, then build
+```
+
+`build` clones the six projects into `~/src/ivm-deps`, builds them in the
+documented order, installs into `/usr/local`, writes the systemd drop-in for
+`USBMUXD_DEFAULT_DEVICE_MODE=3` and restarts the daemon. It needs network access
+and `sudo` for the installations; nothing runs before you see it. Re-running
+continues from what is already built, and `--force` rebuilds after upstream
+changes.
+
+The manual recipe, the versions the reference machine was built with, and the
+uninstall steps are in [docs/dependencies.md](docs/dependencies.md).
 
 ### The USB network
 
@@ -332,7 +357,7 @@ The details of each layer live in [docs/](docs/).
 | Linux with systemd | Tested on CachyOS (Arch-based) |
 | Wayland compositor | Hyprland is the first supported target |
 | NetworkManager | Used to share the USB interface |
-| `usbmuxd` with NCM support | Distro packages may be too old; the CLI detects this |
+| `usbmuxd` with NCM support | Distro packages cannot switch the USB mode; `ivm deps` detects it and can build the stack |
 | Sunshine | Host-side streaming server |
 | Moonlight | iPad app, from the App Store |
 | USB-C cable | Must support data, not just power |

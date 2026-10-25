@@ -199,7 +199,8 @@ _doctor_usb() {
     local binary
     if ! binary=$(usbmuxd_binary); then
         ivm_fail 'usbmuxd is not installed'
-        ivm_detail 'see docs/dependencies.md: the distribution package cannot switch modes'
+        ivm_detail 'the distribution package cannot switch modes anyway'
+        ivm_detail 'build a capable one with: ivm deps build'
         return 0
     fi
 
@@ -210,7 +211,7 @@ _doctor_usb() {
         ivm_fail "usbmuxd cannot request USB device mode $IVM_USBMUXD_DEFAULT_DEVICE_MODE"
         ivm_detail "binary: $binary (a release build, or the distribution package)"
         ivm_detail 'there is no network interface until a capable build replaces it'
-        ivm_detail 'see docs/dependencies.md for the build order'
+        ivm_detail 'build one with: ivm deps build'
     fi
 
     local env
@@ -220,6 +221,7 @@ _doctor_usb() {
         if [[ $env != *USBMUXD_DEFAULT_DEVICE_MODE* ]]; then
             ivm_warn "the service does not set USBMUXD_DEFAULT_DEVICE_MODE=$IVM_USBMUXD_DEFAULT_DEVICE_MODE"
             ivm_detail 'the build default may be enough, but the drop-in is what makes it explicit'
+            ivm_detail 'write it with: ivm deps build'
         fi
     fi
 }

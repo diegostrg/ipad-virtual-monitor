@@ -272,7 +272,7 @@ _net_status() {
         ivm_warn 'the iPad is on the bus but exposes no network interface yet'
         ivm_detail 'this takes a few seconds after the cable is plugged in'
         ivm_detail 'if it stays like this, usbmuxd must request USB device mode 3'
-        ivm_detail 'see docs/dependencies.md'
+        ivm_detail 'check the stack with: ivm deps status'
         return "$IVM_EXIT_OK"
     fi
     ivm_ok "data interface: $iface"
@@ -513,7 +513,7 @@ IVM_NET_DECLINED=0
     fi
     if [[ -z $iface ]]; then
         ivm_fail 'the iPad exposes no network interface'
-        ivm_detail 'usbmuxd must request USB device mode 3; see docs/dependencies.md'
+        ivm_detail 'usbmuxd must request USB device mode 3; check: ivm deps status'
         return "$IVM_EXIT_PROBLEMS"
     fi
     ivm_detail "data interface: $iface"

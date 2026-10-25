@@ -44,7 +44,9 @@ before the previous phase is verified on real hardware.
 - [x] Verify the DHCP handshake and report the iPad's address
 - [x] Print every root command, ask once, then apply; `--dry-run` and `--yes`
 - [ ] firewalld and nftables: add the rule instead of describing it
-- [ ] Instructions for `usbmuxd` (no automatic compilation yet)
+- [x] Verified build recipe for the Apple stack, with the exact versions and
+      configure flags used on the reference machine
+- [x] `ivm deps`: inspect the stack, and build it with a visible plan
 
 ## Phase 3 — Display
 

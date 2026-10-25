@@ -227,7 +227,7 @@ _up_network() {
     fi
     if [[ -z $iface ]]; then
         ivm_fail 'the iPad exposes no network interface'
-        ivm_detail 'usbmuxd must request USB device mode 3; see docs/dependencies.md'
+        ivm_detail 'usbmuxd must request USB device mode 3; check: ivm deps status'
         return 0
     fi
 

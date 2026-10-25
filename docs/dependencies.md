@@ -112,6 +112,62 @@ Build order matters: each library is discovered by the next one through
 | udev headers | `udev` | `systemd-libs` |
 | Git | `git` | `git` |
 
+## Building it from source
+
+This is what `ivm deps build` automates. The commands are here for reading,
+auditing, or doing it by hand.
+
+On the reference machine (CachyOS, Arch-based) the toolchain came from:
+
+```bash
+sudo pacman -S --needed base-devel git autoconf automake libtool pkgconf \
+    libusb openssl curl systemd-libs
+```
+
+Then, in one shell, because every project finds the previous one through
+`pkg-config`:
+
+```bash
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+mkdir -p ~/src/ivm-deps && cd ~/src/ivm-deps
+
+for project in libplist libimobiledevice-glue libusbmuxd libtatsu \
+               libimobiledevice usbmuxd; do
+    git clone --depth 1 "https://github.com/libimobiledevice/$project.git"
+    cd "$project"
+    if [ "$project" = usbmuxd ]; then
+        ./autogen.sh --prefix=/usr/local \
+            --sysconfdir=/etc --localstatedir=/var --runstatedir=/run
+    else
+        ./autogen.sh --prefix=/usr/local
+    fi
+    make -j"$(nproc)"
+    sudo make install
+    cd ..
+done
+
+sudo ldconfig
+```
+
+`autogen.sh` runs `configure` for you. A release tarball ships a `configure` and
+can be used directly.
+
+The tree on the reference machine, at the time of writing, was:
+
+```text
+libplist              2.8.0
+libimobiledevice-glue 1.3.3-1-g10ddafa
+libusbmuxd            2.1.1-2-g93eb168
+libtatsu              1.0.5-6-ge7d6ad1
+libimobiledevice      1.4.0-9-gfa0f791
+usbmuxd               1.1.1-72-g3ded00c
+```
+
+Those are git builds, so the suffixes move. The only hard requirement is a
+`usbmuxd` from **2022-12-22 or later**; the libraries just have to be current
+enough for it to build. Do not pin versions from this page, pin the verification
+below.
+
 ## Installing to `/usr/local`
 
 The stack is installed under `/usr/local`, which no package manager owns. This
@@ -188,15 +244,48 @@ the current commit hash. Any build from 2022-12-22 onwards contains the feature.
 
 ## How this project uses it
 
-The CLI does **not** compile anything automatically. It only:
+```bash
+ivm deps status          # read-only: tools, libraries, daemon, service
+ivm deps build --dry-run # the plan, printed and nothing else
+ivm deps build           # the same plan, then one confirmation, then it runs
+```
 
-1. detects whether the installed `usbmuxd` supports the variable;
-2. reports a clear, distro-specific explanation if it does not;
-3. verifies that the running service points at the capable binary.
+`status` answers three questions without root: are the six pieces installed
+under `/usr/local`, can the daemon actually switch the device mode, and does the
+running service use it with `USBMUXD_DEFAULT_DEVICE_MODE=3`.
 
-Automatic compilation is deliberately out of scope, because a script that
-builds six projects from source is a liability on a rolling distribution.
-Packaging it (AUR, COPR, PPA) is the better long-term answer.
+`build` derives a plan from the current state, prints every command, and asks
+once before running anything. It is deliberately conservative:
+
+- if **any** library is missing, it rebuilds all six in order, because a mixed
+  stack is worse than a slow build;
+- if the libraries are all there and only the daemon cannot switch modes, it
+  rebuilds `usbmuxd` alone;
+- if the pieces are there but the drop-in is missing or wrong, it writes only
+  the drop-in and reloads systemd;
+- `--force` rebuilds everything anyway, for updating after upstream changes.
+
+Sources are cloned into `~/src/ivm-deps`; `IVM_DEPS_DIR` overrides it, which is
+also how an existing checkout is reused:
+
+```bash
+IVM_DEPS_DIR=~/src/imd ivm deps build
+```
+
+They are installed into `/usr/local` (`IVM_DEPS_PREFIX`, not recommended to
+change). Re-running after a failure continues from what is already built.
+
+Do not edit `/usr/lib/systemd/system/usbmuxd.service` directly. The drop-in
+above clears `ExecStart` and sets its own, so the vendor file does not need to
+change — and editing it means the next package upgrade will silently undo the
+change, or leave the system with two sources of truth.
+
+The tool still does not invent packages for unknown distributions: only the
+Arch-based command is generated, because that is the target this project is
+verified on. Everywhere else the table above is the reference.
+
+Packaging (AUR, COPR, PPA) remains the better long-term answer; `ivm deps build`
+exists so that nobody has to reconstruct this from a bug report again.
 
 ## Uninstalling
 
@@ -208,7 +297,8 @@ sudo systemctl daemon-reload
 sudo systemctl restart usbmuxd
 ```
 
-Then, inside each source directory from 6 down to 1:
+Then, inside each source directory from 6 down to 1 (by default
+`~/src/ivm-deps`, or wherever `IVM_DEPS_DIR` points):
 
 ```bash
 sudo make uninstall
