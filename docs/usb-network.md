@@ -90,9 +90,16 @@ interface at all**.
 
 Between steps 1 and 3 there is nothing to inspect, so a report issued in that
 window is not evidence of a fault. `ivm` waits instead of failing: `ivm net up`
-waits up to 15 seconds for the interface and says it is waiting, `ivm net status`
+waits up to 10 seconds for the interface and says it is waiting, `ivm net status`
 gives it 3 seconds and then reports a `warn` rather than a `fail`, and `ivm up`
 and `ivm doctor` wait before deciding the same thing.
+
+Measured on the reference machine by sampling sysfs every half second while
+unplugging and replugging: the gap was **under one second**, and the address and
+the peer were there in the next sample. It is easy to catch anyway, because
+plugging the cable and typing a command take about the same time — which is
+exactly how it was found. The timeouts above are margin for a colder plug, not a
+measurement of the gap.
 
 If the interface never appears, the problem is `usbmuxd`: it must be the build
 that requests the device mode. See [dependencies.md](dependencies.md).

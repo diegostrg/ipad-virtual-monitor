@@ -17,8 +17,9 @@
 IVM_NET_PROFILE=${IVM_NET_PROFILE:-ipad-usb}
 IVM_NET_CONF=${IVM_NET_CONF:-/etc/NetworkManager/conf.d/99-ivm-usb.conf}
 # How long to wait for the interface after the cable appears. Measured on the
-# reference machine; see docs/usb-network.md.
-IVM_NET_WAIT=${IVM_NET_WAIT:-15}
+# reference machine at under a second, but a cold plug after boot can be slower,
+# so there is margin. See docs/usb-network.md.
+IVM_NET_WAIT=${IVM_NET_WAIT:-10}
 
 # Whether the plan is being applied. Set to 1 only after the user agrees.
 IVM_NET_APPLY=0
