@@ -9,6 +9,7 @@ before the previous phase is verified on real hardware.
 - [x] README, license, documentation structure
 - [x] Architecture, USB network, video pipeline and troubleshooting documents
 - [x] Dependency documentation: why the distro `usbmuxd` cannot switch modes
+- [x] Findings from earlier attempts verified and folded into the design docs
 - [ ] Repository published on GitHub (deferred until the tool works)
 
 ## Phase 1 — Diagnosis
@@ -37,23 +38,31 @@ before the previous phase is verified on real hardware.
 - [ ] Use the explicit `IPAD` output name
 - [ ] Compute position and scale from the current layout
 - [ ] Support Lua and legacy Hyprland dialects
-- [ ] `ivm display prep` / `cleanup` hooks for Sunshine
-- [ ] Resolution from the client request, with a safe fallback
-- [ ] Behaviour when the output already exists
+- [ ] Idempotent creation: `Name already taken` counts as success
+- [ ] `ivm display prep` hook for Sunshine (create before capture)
+- [ ] Resolution from the client request, with the 1920×1334 fallback
+- [ ] Snapshot and restore the focused monitor and the active window
+- [ ] Reconcile with existing monitor rules (`hl.monitor` replaces them)
+- [ ] Verify that Sunshine passes the client's dimensions to prep commands
 
 ## Phase 4 — Orchestration
 
 - [ ] `ivm up` / `ivm down` / `ivm status`
 - [ ] Configure Sunshine hooks with a backup, without touching credentials
+- [ ] `ivm watch`: supervisor as a systemd user unit
+- [ ] Session detection from Sunshine's `/proc/<pid>/task/*/comm` threads
+- [ ] Grace period before removing the output (default 20 s, configurable)
 - [ ] Human-readable status table
 - [ ] Shell completions (bash, zsh, fish)
-- [ ] Optional systemd user unit for the network layer
 
 ## Phase 5 — Hardening and release
 
 - [ ] `bats` test suite for detection and idempotency logic
 - [ ] `shellcheck` clean, `shfmt` formatted
 - [ ] Remove the user's stale `Virtual-1` / `HEADLESS-*` rules during migration
+- [ ] Guided migration from the earlier `vkms` setup: unload the module, remove
+      `modules-load.d` persistence and the obsolete `virtual-display.service`
+- [ ] Detect and report leftover units and scripts from earlier attempts
 - [ ] Rewrite the private Spanish notes into public English documentation
 - [ ] Publish on GitHub with screenshots and a short demo
 - [ ] Package for Arch (AUR) if there is demand

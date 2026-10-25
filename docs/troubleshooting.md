@@ -18,8 +18,12 @@ layer 4, so never start with Sunshine.
 | Ping fails | 2 — addressing | `ip neigh show dev usb0` |
 | Ping works, Moonlight cannot find host | 2/4 — firewall or listening address | `ss -lntup` |
 | Moonlight connects, black screen | 3 — virtual output | `hyprctl monitors` |
+| Sunshine logs `Selected monitor []` | 3 — output missing | `hyprctl monitors`, supervisor state |
+| iPad shows a clone of the laptop | 4 — capture backend | `capture` must be `wlr`, not `kms` |
 | Image appears but is blurry | 3 — resolution | output mode vs client request |
+| Keyboard stops responding after connecting | 3 — focus side effect | active window moved to `IPAD` |
 | Works after manual setup, breaks after reboot | 3 — ephemeral output | nothing recreates `IPAD` |
+| Output never disappears after disconnect | lifecycle — supervisor | `systemctl --user status ivm-watch` |
 | Works in terminal, fails from Sunshine | 4 — service environment | `HYPRLAND_INSTANCE_SIGNATURE` |
 | Input does not reach the host | 4 — permissions | uinput / udev rules |
 
@@ -158,6 +162,40 @@ hyprctl workspaces -j
 
 A disabled output is still listed by `monitors all` but is not rendered.
 
+### Sunshine logs `Selected monitor []`
+
+The empty brackets mean Sunshine found no output matching `output_name` and has
+no valid capture target. The stream connects but shows nothing.
+
+Check, in this order:
+
+```bash
+hyprctl monitors                          # does IPAD exist and is it enabled?
+grep -E 'output_name|capture' ~/.config/sunshine/sunshine.conf
+systemctl --user status ivm-watch         # is the supervisor running?
+```
+
+If the output is missing and the supervisor is not running, nothing will create
+it. This is the most common cause of "it worked yesterday".
+
+### The keyboard stops responding after connecting
+
+Creating an output moves the focus to it and takes the active window along. The
+window still exists; it is on the virtual monitor's workspace, which is not
+visible on the laptop panel.
+
+Recover it without touching the mouse:
+
+```bash
+hyprctl clients -j | jq -r '.[] | "\(.address) \(.workspace.id) \(.title)"'
+hyprctl dispatch movewindowtomonitor eDP-1
+hyprctl dispatch focusmonitor eDP-1
+```
+
+The tool prevents this by snapshotting the focused monitor and active window
+before creating the output and restoring them afterwards. If it happens anyway,
+the snapshot/restore step failed — check the supervisor log.
+
 ## Layer 4 — stream
 
 Confirm Sunshine is running and listening on all interfaces:
@@ -172,6 +210,46 @@ it. It must be `0.0.0.0:47989` or the USB address.
 
 Confirm the firewall allows Sunshine's ports on the USB interface. The safest
 approach is to scope the rules to `usb0` rather than opening them globally.
+
+### The iPad shows a clone of the laptop
+
+The capture backend cannot see the virtual output and fell back to the laptop
+panel. This happens with `capture = kms`, which logs:
+
+```text
+Unknown Monitor connector type [HEADLESS]
+Couldn't map 'HEADLESS-1'
+```
+
+Set `capture = wlr` in `~/.config/sunshine/sunshine.conf` and restart Sunshine.
+The wlr backend captures virtual outputs through `wlr-screencopy`.
+
+### The output never disappears after disconnecting
+
+Expected if nothing is supervising the lifecycle. `global_undo_cmd` is not a
+disconnect hook: Sunshine runs it when the process terminates, not when the
+client leaves. Check the supervisor:
+
+```bash
+systemctl --user status ivm-watch
+journalctl --user -u ivm-watch -n 30
+```
+
+The output is removed only after the grace period, by design, so a quick
+reconnect does not destroy and recreate the monitor.
+
+### The disconnect never appears in the Sunshine log
+
+Known behaviour. With the Desktop app (placebo, id 0), the control loop in
+`src/stream.cpp` stops before it processes the disconnect event, so
+`CLIENT DISCONNECTED` is usually missing.
+
+Do not build automation on that log line. Use the session threads instead:
+
+```bash
+pid=$(pgrep -x sunshine | head -1)
+for t in /proc/"$pid"/task/*/comm; do cat "$t"; done | grep -E 'session::|video::capture'
+```
 
 ### Moonlight cannot find the host
 

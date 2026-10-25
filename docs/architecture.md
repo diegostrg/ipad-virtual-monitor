@@ -82,15 +82,28 @@ name predictable and lets Sunshine point at it permanently.
 
 ### Layer 4 — Stream
 
-Sunshine captures the `IPAD` output with its wlr backend and encodes it to
-H.264/HEVC. Moonlight on the iPad connects to the host's USB address
-(`10.42.0.1`), not to the iPad's own address.
+Sunshine captures the `IPAD` output and encodes it to H.264/HEVC. Moonlight on
+the iPad connects to the host's USB address (`10.42.0.1`), not to the iPad's own
+address.
 
-Because the output is created on demand, the tool registers Sunshine
-`global_prep_cmd` / `global_undo_cmd` hooks:
+`capture = wlr` is mandatory: the KMS backend does not see headless outputs and
+silently falls back to the laptop panel, producing a clone instead of an
+extension.
 
-- before a stream starts, create `IPAD` at the resolution the client asked for;
-- when the stream ends, remove it.
+### Cross-cutting — Lifecycle
+
+The output must exist before capture starts and disappear when the session ends.
+Sunshine only provides the first half of that contract:
+
+- `global_prep_cmd` runs before the capture target is selected (about 105 ms of
+  margin), so it can create the output.
+- `global_undo_cmd` runs at process termination, not on disconnect, so it cannot
+  clean up.
+- The disconnect event is not reliably logged when the Desktop app is used.
+
+The tool therefore runs a small supervisor that reconciles the desired state
+with the real one every second, using the session threads Sunshine exposes in
+`/proc/<pid>/task/*/comm`, plus a grace period before removing the output.
 
 ## Why not other approaches
 
@@ -113,10 +126,13 @@ keeps the desktop honest.
 `hyprctl output create headless IPAD` gives a name the tool controls.
 Sunshine's `output_name` never has to change.
 
-**D3 — Let the client decide the resolution.**
+**D3 — Prefer the client's resolution, with a known fallback.**
 Sunshine exposes the client's requested width, height and refresh rate to prep
-commands. The output is created at that exact size instead of a hardcoded guess,
-which keeps pixels 1:1 and avoids scaling blur.
+commands. When those values are available the output is created at that exact
+size, which keeps pixels 1:1. When they are not, the tool falls back to a known
+profile (1920×1334 for an iPad Air 11"). Today the fallback is the verified path;
+the client-driven path must be validated end to end before it becomes the
+default.
 
 **D4 — Idempotent operations.**
 `up` twice must be harmless. `down` when nothing is running must succeed.
@@ -137,19 +153,33 @@ Hyprland snippets are documented in
 [hyprland-setup.md](hyprland-setup.md) and installed manually by the user.
 This keeps upgrades safe and makes the project easy to remove.
 
+**D8 — Supervise the lifecycle; do not trust logs.**
+Creation is triggered by Sunshine's prep command. Destruction is driven by the
+presence of Sunshine's session threads plus a grace period. Log parsing is a
+hint only, because the disconnect event is usually missing.
+
+**D9 — Do not steal the user's focus.**
+Creating an output moves the active window to it. The tool snapshots and
+restores the focused monitor and the active window, so plugging in the iPad does
+not take the keyboard away from the laptop.
+
 ## Runtime model
 
-The CLI is a thin orchestrator. There is no long-running daemon of its own:
+The CLI is a thin orchestrator plus one small user service:
 
 ```text
-ivm up      = ensure network → ensure output → ensure Sunshine → print endpoint
-ivm status  = inspect each layer, report state
-ivm down    = stop stream-dependent output → optionally bring network down
+ivm up       = ensure network → ensure Sunshine configuration → print endpoint
+ivm status   = inspect each layer, report state
+ivm down     = remove the virtual output → optionally bring the network down
+ivm watch    = reconcile the output with Sunshine's session state (service)
 ```
 
-State is derived from the system (`ip`, `nmcli`, `hyprctl`, `systemctl`) rather
-than stored. A small runtime file is used only to remember values that cannot
-be discovered, such as the refresh rate chosen for the current session.
+`watch` is the only long-running component. It runs as a systemd user unit, holds
+no privileges, and exits safely when the compositor is unreachable.
+
+State is derived from the system (`ip`, `nmcli`, `hyprctl`, `systemctl`, `/proc`)
+rather than stored. A small runtime file is used only for values that cannot be
+discovered, such as when the output was created, which the grace period needs.
 
 ## Security notes
 
